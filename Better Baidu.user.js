@@ -1,6 +1,5 @@
 // ==UserScript==
 // @name        Better Baidu
-// @version      0.1
 // @description Remove the 'right' contents. Add Bing and Google search buttons.
 // @match     http://www.baidu.com/
 // @match     https://www.baidu.com/
@@ -8,6 +7,8 @@
 // @match     https://www.baidu.com/s*
 // @match     http://www.baidu.com/baidu*
 // @match     https://www.baidu.com/baidu*
+// @author yinxiao
+// @version      0.1
 // @updateURL https://github.com/rubinbaby/userscripts/blob/main/Better%20Baidu.user.js
 // ==/UserScript==
 (function (window, document, undefined) {

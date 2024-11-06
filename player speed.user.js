@@ -3,6 +3,7 @@
 // @description This is your new file, start writing code
 // @match     https://www.youtube.com/*
 // @match     https://www.bilibili.com/*
+// @author yinxiao
 // @version      0.1
 // @updateURL https://github.com/rubinbaby/userscripts/blob/main/player%20speed.user.js
 // ==/UserScript==
@@ -29,7 +30,6 @@ function changeVideoPlayMode(domain){
             for(var i=0;i<doms.length;i++){
                 if(containsChinese(doms[i].title,"Cinema mode")){
                     doms[i].click();
-                    
                 }
             }
         }

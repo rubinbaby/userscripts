@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name        hightlight zhibo8
-// @version      0.1
 // @match       *://*.zhibo8.com/*
 // @author      yinxiao
+// @version      0.1
 // @description 把点击过的直播吧新闻链接颜色改为醒目色
 // @updateURL https://github.com/rubinbaby/userscripts/blob/main/hightlight%20zhibo8.user.js
 // ==/UserScript==
