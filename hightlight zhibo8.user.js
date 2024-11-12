@@ -2,7 +2,7 @@
 // @name        hightlight zhibo8
 // @match       *://*.zhibo8.com/*
 // @author      yinxiao
-// @version      0.1
+// @version      0.2
 // @description 把点击过的直播吧新闻链接颜色改为醒目色
 // @updateURL https://github.com/rubinbaby/userscripts/blob/main/hightlight%20zhibo8.user.js
 // ==/UserScript==
@@ -32,7 +32,7 @@ function containsChinese(str, substring) {
     var hostname = window.location.hostname;
     var zoom = '1';
     if(containsChinese(hostname, 'zhibo8.com')){
-        zoom = '1.25';
+        zoom = '1.4';
     }
     document.body.style.zoom = zoom;
 })();
