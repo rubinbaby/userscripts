@@ -32,7 +32,7 @@ function containsChinese(str, substring) {
     var hostname = window.location.hostname;
     var zoom = '1';
     if(containsChinese(hostname, 'zhibo8.com')){
-        zoom = '1.4';
+        zoom = '1.3';
     }
     document.body.style.zoom = zoom;
 })();
