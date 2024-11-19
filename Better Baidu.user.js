@@ -91,9 +91,7 @@
                         var q = document.querySelector('#kw').value || '';
                         this.setAttribute('href', this.getAttribute('data-url') + q);
                     };
-                    anchor.setAttribute('style', 'cursor: pointer; color: rgb(255, 255, 255);font-weight: bold; display: inline-block;' +
-                                        'text-decoration: none;background: rgb(51, 133, 255) none repeat scroll 0% 0%; text-align: center; line-height: 33px;' +
-                                        'margin-left: 2px; width: 60px; height: 33px; border-bottom: 1px solid transparent;');
+                    anchor.setAttribute('style', 'font-size:medium; cursor: pointer; color: rgb(255, 255, 255);font-weight: bold; display: inline-block;text-decoration: none;background: #4e6ef2 none repeat scroll 0% 0%; text-align: center; line-height: 40px;margin-left: 2px; width: 60px; height: 40px; border-bottom: 1px solid transparent;');
                     container.insertBefore(anchor, current.nextSibling);
                     current = anchor;
                 }
