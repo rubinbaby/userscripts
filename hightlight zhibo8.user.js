@@ -2,7 +2,7 @@
 // @name        hightlight zhibo8
 // @match       *://*.zhibo8.com/*
 // @author      yinxiao
-// @version      0.2.1
+// @version      0.2.2
 // @description 把点击过的直播吧新闻链接颜色改为醒目色
 // @updateURL https://github.com/rubinbaby/userscripts/blob/main/hightlight%20zhibo8.user.js
 // ==/UserScript==
@@ -42,14 +42,12 @@ function stopAutoRefresh() {
     }
 
     var pathname = window.location.pathname;
-    var userAgent = navigator.userAgent;
     if (containsChinese(pathname, '/zuqiu/more.htm')) {
         zoom = '1.5';
-        if (containsChinese(userAgent, 'Firefox')) {
-            setTimeout(stopAutoRefresh, 20000);
-        }
+        setTimeout(stopAutoRefresh, 20000);
     }
-    if (containsChinese(pathname, '/zuqiu/') && containsChinese(pathname, 'native.htm')) {
+    if (containsChinese(pathname, '/zuqiu/')
+        && (containsChinese(pathname, 'native.htm') || containsChinese(pathname, 'video.htm'))) {
         zoom = '1.5';
     }
     document.body.style.zoom = zoom;
