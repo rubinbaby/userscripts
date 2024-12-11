@@ -2,7 +2,7 @@
 // @name        hightlight zhibo8
 // @match       *://*.zhibo8.com/*
 // @author      yinxiao
-// @version      0.2.2
+// @version      0.2.3
 // @description 把点击过的直播吧新闻链接颜色改为醒目色
 // @updateURL https://github.com/rubinbaby/userscripts/blob/main/hightlight%20zhibo8.user.js
 // ==/UserScript==
@@ -51,4 +51,5 @@ function stopAutoRefresh() {
         zoom = '1.5';
     }
     document.body.style.zoom = zoom;
+    document.querySelector('.qrcode').remove();
 })();
