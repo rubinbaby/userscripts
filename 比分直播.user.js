@@ -4,8 +4,9 @@
 // @match       https://www.188bifen.com/
 // @match       http://www.188bifen.com/
 // @author yinxiao
-// @version      0.2
+// @version      0.2.1
 // @updateURL https://github.com/rubinbaby/userscripts/blob/main/%E6%AF%94%E5%88%86%E7%9B%B4%E6%92%AD.user.js
+// @downloadURL https://github.com/rubinbaby/userscripts/blob/main/%E6%AF%94%E5%88%86%E7%9B%B4%E6%92%AD.user.js
 // ==/UserScript==
 function containsChinese(str, substring) {
     const regex = new RegExp(substring, 'u');

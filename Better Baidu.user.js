@@ -8,8 +8,9 @@
 // @match     http://www.baidu.com/baidu*
 // @match     https://www.baidu.com/baidu*
 // @author yinxiao
-// @version      0.1
+// @version      0.1.1
 // @updateURL https://github.com/rubinbaby/userscripts/blob/main/Better%20Baidu.user.js
+// @downloadURL https://github.com/rubinbaby/userscripts/blob/main/Better%20Baidu.user.js
 // ==/UserScript==
 (function (window, document, undefined) {
     var hasAdded = false;

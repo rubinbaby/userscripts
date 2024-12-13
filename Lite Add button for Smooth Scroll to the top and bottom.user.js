@@ -3,8 +3,9 @@
 // @description 为页面添加按钮，平滑的滚动到顶部/底部
 // @match       *://*/*
 // @author yinxiao
-// @version      0.1
+// @version      0.1.1
 // @updateURL https://github.com/rubinbaby/userscripts/blob/main/Lite%20Add%20button%20for%20Smooth%20Scroll%20to%20the%20top%20and%20bottom.user.js
+// @downloadURL https://github.com/rubinbaby/userscripts/blob/main/Lite%20Add%20button%20for%20Smooth%20Scroll%20to%20the%20top%20and%20bottom.user.js
 // ==/UserScript==
 // 
 function GM_addStyle(css) {

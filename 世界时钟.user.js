@@ -3,8 +3,9 @@
 // @description world clock
 // @match       https://ww2.24timezones.com/*
 // @author yinxiao
-// @version      0.1
+// @version      0.1.1
 // @updateURL https://github.com/rubinbaby/userscripts/blob/main/%E4%B8%96%E7%95%8C%E6%97%B6%E9%92%9F.user.js
+// @downloadURL https://github.com/rubinbaby/userscripts/blob/main/%E4%B8%96%E7%95%8C%E6%97%B6%E9%92%9F.user.js
 // ==/UserScript==
 (function() {
     'use strict';

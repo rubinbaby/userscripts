@@ -4,8 +4,9 @@
 // @match     https://www.youtube.com/*
 // @match     https://www.bilibili.com/*
 // @author yinxiao
-// @version      0.1
+// @version      0.1.1
 // @updateURL https://github.com/rubinbaby/userscripts/blob/main/player%20speed.user.js
+// @downloadURL https://github.com/rubinbaby/userscripts/blob/main/player%20speed.user.js
 // ==/UserScript==
 function containsChinese(str, substring) {
   const regex = new RegExp(substring, 'u');
