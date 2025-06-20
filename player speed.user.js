@@ -5,7 +5,7 @@
 // @match     https://www.bilibili.com/*
 // @match     file:///Users/*
 // @author yinxiao
-// @version      0.1.2
+// @version      0.1.3
 // @updateURL https://github.com/rubinbaby/userscripts/blob/main/player%20speed.user.js
 // @downloadURL https://github.com/rubinbaby/userscripts/blob/main/player%20speed.user.js
 // ==/UserScript==
@@ -14,7 +14,32 @@ function containsChinese(str, substring) {
     return regex.test(str);
 }
 
-function changeVideoPlaySpeed(speed) {
+function changeVideoPlaySpeed(domain) {
+    var href = window.location.href;
+    var title = document.title;
+    var speed = 1;
+    if (containsChinese(domain, "www.youtube.com")) {
+        var channelNameEle = document.querySelector('#above-the-fold #channel-name .yt-simple-endpoint.style-scope.yt-formatted-string');
+        var channelName = channelNameEle.text;
+        var isChannelMatched = false;
+        var channelNames = ["TVBS Talk", "CTITV NEWS"];
+        for (var ii = 0; ii < channelNames.length; ii++) {
+            isChannelMatched = isChannelMatched || containsChinese(channelName, channelNames[ii]);
+        }
+        if (isChannelMatched) {
+            speed = 1.5;
+        }
+    }
+    if (containsChinese(domain, "www.bilibili.com")) {
+        if (containsChinese(title, "名侦探柯南")) {
+            speed = 1.25;
+        }
+    }
+
+    if (containsChinese(href, "file:///Users/")) {
+        speed = 1.5;
+    }
+
     var v = document.getElementsByTagName('video');
     for (var i = 0; i < v.length; i++) {
         var original_speed = v[i].playbackRate;
@@ -43,11 +68,11 @@ function changeVideoPlayMode(domain) {
         }
     }
     if (containsChinese(domain, "www.bilibili.com")) {
-        var doms = document.getElementsByClassName("bpx-player-ctrl-btn bpx-player-ctrl-wide");
+        doms = document.getElementsByClassName("bpx-player-ctrl-btn bpx-player-ctrl-wide");
         if (doms.length > 0) {
-            for (var i = 0; i < doms.length; i++) {
-                if (doms[i].classList.length < 3) {
-                    doms[i].click();
+            for (var k = 0; k < doms.length; k++) {
+                if (doms[k].classList.length < 3) {
+                    doms[k].click();
                 }
             }
         }
@@ -59,30 +84,8 @@ function changeVideoPlayMode(domain) {
 
     // Your code here...
     var domain = window.location.hostname;
-    var href = window.location.href;
-    var title = document.title;
-    var speed = 1;
-    if (containsChinese(domain, "www.youtube.com")) {
-        var keyword = "list=PLh9lJwqeOuvNPqHfKf10o5Ql9M-OEnoLy";
-        // keyword = "kpjOEw8a9K0";
-        var isUrlMatched = window.location.href.includes(keyword);
-        // console.log("url is matched: " + isUrlMatched);
-        if (isUrlMatched) {
-            speed = 1.5;
-        }
-    }
-    if (containsChinese(domain, "www.bilibili.com")) {
-        if (containsChinese(title, "名侦探柯南")) {
-            speed = 1.25;
-        }
-    }
-
-    if (containsChinese(href, "file:///Users/")) {
-        speed = 1.5;
-    }
-
     window.setInterval(function () {
-        changeVideoPlaySpeed(speed);
+        changeVideoPlaySpeed(domain);
         changeVideoPlayMode(domain);
     }, 5000);
 })();
