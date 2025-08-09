@@ -4,7 +4,7 @@
 // @match       https://www.188bifen.com/
 // @match       http://www.188bifen.com/
 // @author yinxiao
-// @version      0.2.3
+// @version      0.2.4
 // @updateURL https://github.com/rubinbaby/userscripts/blob/main/%E6%AF%94%E5%88%86%E7%9B%B4%E6%92%AD.user.js
 // @downloadURL https://github.com/rubinbaby/userscripts/blob/main/%E6%AF%94%E5%88%86%E7%9B%B4%E6%92%AD.user.js
 // ==/UserScript==
@@ -27,7 +27,7 @@ function stopScoreAlert() {
 
     // Your code here...
     var original_session = window.sessionStorage.selectLeagueIds;
-    var new_session = '{"zuqiu":{"21":1,"22":1,"24":1,"371":1,"369":1,"395":1,"372":1,"383":1,"7":1,"352":1}}';
+    var new_session = '{"zuqiu":{"21":1,"22":1,"24":1,"371":1,"369":1,"395":1,"372":1,"383":1,"7":1,"352":1,"353":1}}';
     console.log("original session: ", original_session);
     if (original_session !== new_session) {
         window.sessionStorage.selectLeagueIds = new_session;
