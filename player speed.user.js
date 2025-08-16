@@ -5,7 +5,7 @@
 // @match     https://www.bilibili.com/*
 // @match     file:///Users/*
 // @author yinxiao
-// @version      0.1.3
+// @version      0.1.4
 // @updateURL https://github.com/rubinbaby/userscripts/blob/main/player%20speed.user.js
 // @downloadURL https://github.com/rubinbaby/userscripts/blob/main/player%20speed.user.js
 // ==/UserScript==
@@ -55,7 +55,7 @@ function changeVideoPlayMode(domain) {
         var doms = document.getElementsByClassName("ytp-size-button ytp-button");
         if (doms.length > 0) {
             for (var i = 0; i < doms.length; i++) {
-                if (containsChinese(doms[i].title, "Cinema mode")) {
+                if (containsChinese(doms[i].getAttribute('data-tooltip-title'), "Cinema mode")) {
                     doms[i].click();
                 }
             }
