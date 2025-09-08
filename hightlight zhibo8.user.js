@@ -2,7 +2,7 @@
 // @name        hightlight zhibo8
 // @match       *://*.zhibo8.com/*
 // @author      yinxiao
-// @version      0.2.7
+// @version      0.2.8
 // @description 把点击过的直播吧新闻链接颜色改为醒目色
 // @updateURL https://github.com/rubinbaby/userscripts/blob/main/hightlight%20zhibo8.user.js
 // @downloadURL https://github.com/rubinbaby/userscripts/blob/main/hightlight%20zhibo8.user.js
@@ -149,13 +149,15 @@ function listAllNews(visitedLinks) {
     'use strict';
 
     // Your code here...
-    var visitedLinkObjects = JSON.parse(window.localStorage.F_T_ARR);
     var visitedLinks = [];
-    $.each(visitedLinkObjects, function (key, value) {
-        value.forEach(function (v) {
-            visitedLinks.push(v.replace("-news-zuqiu-", "/").replaceAll("_", "-"));
-        })
-    });
+    if ("F_T_ARR" in window.localStorage) {
+        var visitedLinkObjects = JSON.parse(window.localStorage.F_T_ARR);
+        $.each(visitedLinkObjects, function (key, value) {
+            value.forEach(function (v) {
+                visitedLinks.push(v.replace("-news-zuqiu-", "/").replaceAll("_", "-"));
+            })
+        });
+    }
     changeLinkColor(visitedLinks);
     var hostname = window.location.hostname;
     var zoom = '1';
