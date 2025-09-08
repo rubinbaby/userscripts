@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name         Highlight Zhibo8
+// @name         highlight zhibo8
 // @namespace    https://github.com/rubinbaby/userscripts
 // @match        *://*.zhibo8.com/*
 // @author       yinxiao
