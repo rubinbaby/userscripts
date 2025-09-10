@@ -1,0 +1,14 @@
+{
+  "manifest_version": 3,
+  "name": "Tab Discarder",
+  "version": "1.0",
+  "permissions": [
+    "tabs",
+    "alarms",
+    "scripting"
+  ],
+  "host_permissions": [ "*://*/*" ],
+  "background": {
+    "service_worker": "background.js"
+  }
+}
