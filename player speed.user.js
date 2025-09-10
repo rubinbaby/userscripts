@@ -1,91 +1,106 @@
 // ==UserScript==
-// @name        player speed
-// @description This is your new file, start writing code
-// @match     https://www.youtube.com/*
-// @match     https://www.bilibili.com/*
-// @match     file:///Users/*
-// @author yinxiao
-// @version      0.1.4
-// @updateURL https://github.com/rubinbaby/userscripts/blob/main/player%20speed.user.js
-// @downloadURL https://github.com/rubinbaby/userscripts/blob/main/player%20speed.user.js
+// @name         player speed
+// @description  Automatically set video playback speed and mode on YouTube/Bilibili
+// @match        https://www.youtube.com/*
+// @match        https://www.bilibili.com/*
+// @match        file:///Users/*
+// @author       yinxiao
+// @version      0.1.5
+// @updateURL    https://github.com/rubinbaby/userscripts/blob/main/player%20speed.user.js
+// @downloadURL  https://github.com/rubinbaby/userscripts/blob/main/player%20speed.user.js
 // ==/UserScript==
-function containsChinese(str, substring) {
-    const regex = new RegExp(substring, 'u');
-    return regex.test(str);
-}
-
-function changeVideoPlaySpeed(domain) {
-    var href = window.location.href;
-    var title = document.title;
-    var speed = 1;
-    if (containsChinese(domain, "www.youtube.com")) {
-        var channelNameEle = document.querySelector('#above-the-fold #channel-name .yt-simple-endpoint.style-scope.yt-formatted-string');
-        var channelName = channelNameEle.text;
-        var isChannelMatched = false;
-        var channelNames = ["TVBS Talk", "CTITV NEWS"];
-        for (var ii = 0; ii < channelNames.length; ii++) {
-            isChannelMatched = isChannelMatched || containsChinese(channelName, channelNames[ii]);
-        }
-        if (isChannelMatched) {
-            speed = 1.5;
-        }
-    }
-    if (containsChinese(domain, "www.bilibili.com")) {
-        if (containsChinese(title, "名侦探柯南")) {
-            speed = 1.25;
-        }
-    }
-
-    if (containsChinese(href, "file:///Users/")) {
-        speed = 1.5;
-    }
-
-    var v = document.getElementsByTagName('video');
-    for (var i = 0; i < v.length; i++) {
-        var original_speed = v[i].playbackRate;
-        if (original_speed != speed) {
-            console.log("original play speed: ", original_speed, ", current play speed: ", speed);
-            v[i].playbackRate = speed;
-        }
-    }
-}
-
-function changeVideoPlayMode(domain) {
-    if (containsChinese(domain, "www.youtube.com")) {
-        var doms = document.getElementsByClassName("ytp-size-button ytp-button");
-        if (doms.length > 0) {
-            for (var i = 0; i < doms.length; i++) {
-                if (containsChinese(doms[i].getAttribute('data-tooltip-title'), "Cinema mode")) {
-                    doms[i].click();
-                }
-            }
-        }
-        var chatCloseDoms = document.querySelectorAll("#close-button > yt-button-renderer button");
-        if (chatCloseDoms.length > 0) {
-            for (var j = 0; j < chatCloseDoms.length; j++) {
-                chatCloseDoms[j].click();
-            }
-        }
-    }
-    if (containsChinese(domain, "www.bilibili.com")) {
-        doms = document.getElementsByClassName("bpx-player-ctrl-btn bpx-player-ctrl-wide");
-        if (doms.length > 0) {
-            for (var k = 0; k < doms.length; k++) {
-                if (doms[k].classList.length < 3) {
-                    doms[k].click();
-                }
-            }
-        }
-    }
-}
 
 (function () {
     'use strict';
 
-    // Your code here...
+    // Utility: substring check
+    function stringContains(str, substring) {
+        return str && substring && str.indexOf(substring) !== -1;
+    }
+
+    // Set video playback speed based on domain and context
+    function changeVideoPlaySpeed(domain) {
+        var href = window.location.href;
+        var title = document.title;
+        var speed = 1;
+
+        if (stringContains(domain, "youtube.com")) {
+            var channelNameEle = document.querySelector('#above-the-fold #channel-name .yt-simple-endpoint.style-scope.yt-formatted-string');
+            var channelName = channelNameEle ? channelNameEle.textContent : "";
+            var channelNames = ["TVBS Talk", "CTITV NEWS", "館長惡名昭彰", "Yahoo風向"];
+            var isChannelMatched = channelNames.some(name => stringContains(channelName, name));
+            if (isChannelMatched) speed = 1.5;
+        }
+
+        if (stringContains(domain, "bilibili.com")) {
+            if (stringContains(title, "名侦探柯南")) speed = 1.25;
+        }
+
+        if (stringContains(href, "file:///Users/")) {
+            speed = 1.5;
+        }
+
+        if (speed == 1) return;
+
+        var videos = document.getElementsByTagName('video');
+        for (var i = 0; i < videos.length; i++) {
+            if (videos[i].playbackRate !== speed) {
+                console.log("Setting play speed:", speed, "for video", i);
+                videos[i].playbackRate = speed;
+            }
+        }
+    }
+
+    // Set video play mode (cinema/wide) if not already set
+    function changeVideoPlayMode(domain) {
+        if (stringContains(domain, "youtube.com")) {
+            // Cinema mode
+            var sizeButtons = document.querySelectorAll(".ytp-size-button.ytp-button");
+            sizeButtons.forEach(btn => {
+                var tooltip = btn.getAttribute('data-tooltip-title');
+                if (tooltip && stringContains(tooltip, "Cinema mode")) {
+                    btn.click();
+                }
+            });
+            // Close chat
+            var chatCloseButtons = document.querySelectorAll("#close-button > yt-button-renderer button");
+            chatCloseButtons.forEach(btn => btn.click());
+        }
+
+        if (stringContains(domain, "bilibili.com")) {
+            // Wide mode
+            var wideButtons = document.querySelectorAll(".bpx-player-ctrl-btn.bpx-player-ctrl-wide");
+            wideButtons.forEach(btn => {
+                // Only click if not already wide (check for a specific class if possible)
+                if (!btn.classList.contains("active")) {
+                    btn.click();
+                }
+            });
+        }
+    }
+
+    // Use MutationObserver for better performance (optional)
+    function observeVideos(domain) {
+        const observer = new MutationObserver(() => {
+            changeVideoPlaySpeed(domain);
+            changeVideoPlayMode(domain);
+        });
+        observer.observe(document.body, { childList: true, subtree: true });
+    }
+
+    // Main
     var domain = window.location.hostname;
-    window.setInterval(function () {
+    // Initial run
+    changeVideoPlaySpeed(domain);
+    changeVideoPlayMode(domain);
+
+    // Use interval for fallback (shorter interval for responsiveness)
+    var interval = setInterval(function () {
         changeVideoPlaySpeed(domain);
         changeVideoPlayMode(domain);
-    }, 5000);
+    }, 2000);
+
+    // Optionally use MutationObserver for dynamic pages
+    // observeVideos(domain);
+
 })();
