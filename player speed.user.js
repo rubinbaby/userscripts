@@ -5,7 +5,7 @@
 // @match        https://www.bilibili.com/*
 // @match        file:///Users/*
 // @author       yinxiao
-// @version      0.1.5
+// @version      0.1.6
 // @updateURL    https://github.com/rubinbaby/userscripts/blob/main/player%20speed.user.js
 // @downloadURL  https://github.com/rubinbaby/userscripts/blob/main/player%20speed.user.js
 // ==/UserScript==
@@ -72,7 +72,7 @@
             var wideButtons = document.querySelectorAll(".bpx-player-ctrl-btn.bpx-player-ctrl-wide");
             wideButtons.forEach(btn => {
                 // Only click if not already wide (check for a specific class if possible)
-                if (!btn.classList.contains("active")) {
+                if (!btn.classList.contains("bpx-state-entered")) {
                     btn.click();
                 }
             });
