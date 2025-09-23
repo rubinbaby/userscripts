@@ -5,7 +5,7 @@
 // @match        https://www.bilibili.com/*
 // @match        file:///Users/*
 // @author       yinxiao
-// @version      0.1.6
+// @version      0.1.7
 // @updateURL    https://github.com/rubinbaby/userscripts/blob/main/player%20speed.user.js
 // @downloadURL  https://github.com/rubinbaby/userscripts/blob/main/player%20speed.user.js
 // ==/UserScript==
@@ -102,5 +102,84 @@
 
     // Optionally use MutationObserver for dynamic pages
     // observeVideos(domain);
+
+    // 获取当前播放项的索引
+    function getCurrentIndex() {
+        const items = Array.from(document.querySelectorAll('ytd-playlist-panel-renderer #items ytd-playlist-panel-video-renderer'));
+        return items.findIndex(item => item.hasAttribute('selected') || item.querySelector('#thumbnail[aria-current="true"]'));
+    }
+
+    // 反转列表
+    function reversePlaylist(container) {
+        const items = Array.from(container.children);
+        items.forEach(item => container.removeChild(item));
+        items.reverse().forEach(item => container.appendChild(item));
+    }
+
+    // 只滚动播放列表容器
+    function scrollToIndexInContainer(container, idx) {
+        container = document.querySelector('ytd-playlist-panel-renderer #items');
+        const items = Array.from(container.children);
+        if (!items[idx]) return;
+        const target = items[idx];
+        const offsetTop = target.offsetTop;
+        const center = offsetTop - container.clientHeight / 2 + target.clientHeight / 2;
+        container.scrollTo({ top: center, behavior: "smooth" });
+    }
+
+    // 主逻辑：反转并滚动到当前播放项
+    function reverseAndScrollToCurrent() {
+        const container = document.querySelector('ytd-playlist-panel-renderer #items');
+        if (!container) return;
+        const items = Array.from(container.children);
+        const total = items.length;
+        const currentIndex = getCurrentIndex();
+        if (currentIndex < 0) return;
+        reversePlaylist(container);
+        const newIndex = total - 2 - currentIndex;
+        setTimeout(() => scrollToIndexInContainer(container, newIndex), 10000);
+    }
+
+    // 监听播放项变化（推荐用 MutationObserver）
+    function observeCurrentChange() {
+        const container = document.querySelector('ytd-playlist-panel-renderer #items');
+        if (!container) return;
+        let lastVideoId = null;
+
+        // 监听属性变化
+        const observer = new MutationObserver(() => {
+            const items = Array.from(container.children);
+            const current = items.find(item => item.hasAttribute('selected') || item.querySelector('#thumbnail[aria-current="true"]'));
+            if (current) {
+                const videoId = current.querySelector('a#thumbnail')?.href?.match(/[?&]v=([^&]+)/)?.[1];
+                if (videoId && videoId !== lastVideoId) {
+                    lastVideoId = videoId;
+                    // 反转并滚动
+                    reverseAndScrollToCurrent();
+                }
+            }
+        });
+
+        observer.observe(container, { subtree: true, attributes: true, childList: true });
+    }
+
+    // 等待DOM加载
+    function waitForPlaylistItems(callback) {
+        if (!stringContains(domain, "youtube.com")) {
+            console.log('Not youtube, ignore...');
+            return;
+        }
+        const interval = setInterval(() => {
+            const container = document.querySelector('ytd-playlist-panel-renderer #items');
+            if (container && container.children.length > 1) {
+                clearInterval(interval);
+                callback();
+            }
+        }, 500);
+    }
+
+    waitForPlaylistItems(() => {
+        observeCurrentChange();
+    });
 
 })();
