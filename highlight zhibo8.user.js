@@ -3,7 +3,7 @@
 // @namespace    https://github.com/rubinbaby/userscripts
 // @match        *://*.zhibo8.com/*
 // @author       yinxiao
-// @version      0.2.9
+// @version      0.2.10
 // @description  Change color of visited Zhibo8 news links to highlight them
 // @updateURL    https://github.com/rubinbaby/userscripts/blob/main/hightlight%20zhibo8.user.js
 // @downloadURL  https://github.com/rubinbaby/userscripts/blob/main/hightlight%20zhibo8.user.js
@@ -45,7 +45,7 @@
     function addHighlightStyle() {
         const style = document.createElement('style');
         style.textContent = `
-            .zhibo8-visited {
+            a:visited, .zhibo8-visited {
                 color: #BC62C2 !important;
             }
         `;
