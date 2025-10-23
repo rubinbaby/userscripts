@@ -1,11 +1,13 @@
 // ==UserScript==
 // @name         unified pages for my favourites
 // @namespace    https://rubinbaby.github.io/userscripts
-// @version      0.0.1
+// @version      0.0.2
 // @description  清空目标网页并显示自己常用的网页
 // @author       yinxiao
 // @match        https://news.zhibo8.com/zuqiu/
 // @run-at       document-start
+// @updateURL    https://github.com/rubinbaby/userscripts/blob/main/unified%20pages%20for%20my%20favourites.user.js
+// @downloadURL  https://github.com/rubinbaby/userscripts/blob/main/unified%20pages%20for%20my%20favourites.user.js
 // @grant        GM.xmlHttpRequest
 // @connect      www.nmc.cn
 // ==/UserScript==
