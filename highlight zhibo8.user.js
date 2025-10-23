@@ -2,8 +2,10 @@
 // @name         highlight zhibo8
 // @namespace    https://github.com/rubinbaby/userscripts
 // @match        *://*.zhibo8.com/*
+// @match        *://*.zhibo8.cc/*
+// @exclude      *://news.zhibo8.com/zuqiu/
 // @author       yinxiao
-// @version      0.2.10
+// @version      0.3.1
 // @description  Change color of visited Zhibo8 news links to highlight them
 // @updateURL    https://github.com/rubinbaby/userscripts/blob/main/hightlight%20zhibo8.user.js
 // @downloadURL  https://github.com/rubinbaby/userscripts/blob/main/hightlight%20zhibo8.user.js
@@ -189,10 +191,20 @@
         (stringContains(pathname, 'native.htm') || stringContains(pathname, 'video.htm'))) {
         zoom = 1.5;
     }
+
+    if (stringContains(pathname, 'html/match.html')) {
+        zoom = 1.1;
+        document.querySelector('.menu').parentNode.remove();
+        document.querySelector('.main .tb-tlt').remove()
+    }
     document.body.style.zoom = zoom;
 
     // Remove QR code if present
     const qrcodeEle = document.querySelector('.qrcode');
     if (qrcodeEle) qrcodeEle.remove();
+
+    // Remove header if present
+    const headerEle = document.querySelector('div#header');
+    if (headerEle) headerEle.remove();
 
 })();
