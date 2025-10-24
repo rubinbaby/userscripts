@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         unified pages for my favourites
 // @namespace    https://rubinbaby.github.io/userscripts
-// @version      0.0.6
+// @version      0.0.7
 // @description  清空目标网页并显示自己常用的网页（首页/体育/新闻/天气/关于）
 // @author       yinxiao
 // @match        https://news.zhibo8.com/zuqiu/
@@ -12,6 +12,7 @@
 // @connect      www.nmc.cn
 // @connect      www.zhibo8.com
 // @connect      api.qiumibao.com
+// @connect      www.popozhibo.cc
 // ==/UserScript==
 
 (function () {
@@ -34,7 +35,6 @@
     };
 
     const URLS = {
-        SPORTS_NEWS_DEFAULT: 'https://news.zhibo8.com/zuqiu/more.htm?label=%E6%9B%BC%E8%81%94',
         SPORTS_NEWS_API: (date) => `https://news.zhibo8.com/zuqiu/json/${date}.htm`,
         SPORTS_VIDEOS_API: (date) => `https://www.zhibo8.com/zuqiu/json/${date}.htm`,
         SPORTS_MATCH_LIVE_DEFAULT: 'https://www.188bifen.com/',
@@ -44,6 +44,7 @@
         NMC_API: 'https://www.nmc.cn/rest/weather?stationid=BOoen',
         MATCH_API: (dateStr) =>
             `https://api.qiumibao.com/application/saishi/index.php?_url=/getMatchByDate&date=${encodeURIComponent(dateStr)}&index_v2=1&_env=pc&_platform=pc`,
+        POPO_ZHIBO: 'http://www.popozhibo.cc',
     };
 
     const THEME = {
@@ -577,14 +578,69 @@
         const leagueEl = li.querySelector('span._league');
         const tournament = leagueEl ? leagueEl.textContent.trim() : '';
 
-        const teamsEl = li.querySelector('span._teams');
-        const matchupHtml = teamsEl ? teamsEl.innerHTML.trim().replaceAll('//', 'https://') : '';
+        function extractTeamsFromSpan(span) {
+            if (!span) return { left: '', right: '' };
+            const nodes = Array.from(span.childNodes).filter(n => {
+                if (n.nodeType === Node.TEXT_NODE) return n.textContent.trim() !== '';
+                if (n.nodeType === Node.ELEMENT_NODE) return n.textContent.trim() !== '';
+                return false;
+            });
+            // 优先查找单独的分隔元素（如 <span> - </span>）
+            let sepIndex = nodes.findIndex(n => n.nodeType === Node.ELEMENT_NODE && /[-—–]/.test(n.textContent));
+            if (sepIndex >= 0) {
+                const left = nodes.slice(0, sepIndex).map(n => n.textContent).join('').trim();
+                const right = nodes.slice(sepIndex + 1).map(n => n.textContent).join('').trim();
+                return { left, right };
+            }
+            // 若没有独立分隔元素，尝试在文本中按常见分隔符拆分
+            const full = span.textContent.replace(/\s/g, ' ').trim();
+            const parts = full.split(/\s*[-—–]\s*/);
+            return { left: (parts[0] || '').trim(), right: (parts[1] || '').trim() };
+        }
+
+        const teamsEls = li.querySelectorAll('span._teams');
+        const lastTeamEl = teamsEls.length ? teamsEls[teamsEls.length - 1] : null;
+        const matchupHtml = lastTeamEl ? lastTeamEl.innerHTML.trim().replaceAll('//', 'https://') : '';
+        const { left: leftTeam, right: rightTeam } = extractTeamsFromSpan(lastTeamEl);
 
         const labelAttr = li.getAttribute('label') || '';
         const labels = labelAttr.split(',').map((s) => s.trim()).filter(Boolean);
 
         const liveHtmls = getAllAnchorHTMLByKeywords(li);
-        return { time, tournament, matchupHtml, labels, liveHtmls };
+        return { time, tournament, matchupHtml, leftTeam, rightTeam, labels, liveHtmls };
+    }
+
+    function parsePopoMatchLiveEntries(htmlText) {
+        const results = [];
+        if (typeof htmlText !== 'string' || !htmlText) return results;
+        const wrapper = dom.create('div');
+        wrapper.innerHTML = htmlText;
+        const matchItems = wrapper.querySelectorAll('.score-list li');
+        matchItems.forEach((item) => {
+            const timeEl = item.querySelector('.game-time');
+            const time = timeEl ? timeEl.textContent.trim() : '';
+            const leftTeamEl = item.querySelector('.left-team .left-team-name');
+            const leftTeam = leftTeamEl ? leftTeamEl.textContent.trim() : '';
+            const rightTeamEl = item.querySelector('.right-team .right-team-name');
+            const rightTeam = rightTeamEl ? rightTeamEl.textContent.trim() : '';
+            const liveLinks = [];
+            const linkEls = item.querySelectorAll('.game-play a');
+            linkEls.forEach((a) => {
+                const href = a.getAttribute('href') || '';
+                const gameStatusEl = a.querySelector('.game-status');
+                const text = gameStatusEl ? gameStatusEl.textContent.trim() : '';
+                if (href && text) {
+                    liveLinks.push(`<a href="${URLS.POPO_ZHIBO}${href}" target="_blank">泡泡${text}</a>`);
+                }
+            });
+            results.push({
+                time,
+                leftTeam,
+                rightTeam,
+                liveLinks,
+            });
+        });
+        return results;
     }
 
     function normalizeDailyEntries(json, dateStr, key = 'data') {
@@ -655,12 +711,25 @@
             }
         });
 
+        const popoMatchLiveHtml = await gmRequestText(URLS.POPO_ZHIBO, 15000);
+        const popoMatchLives = parsePopoMatchLiveEntries(popoMatchLiveHtml);
+        log(popoMatchLives);
+
         const rows = [];
         for (const day of allResults) {
             const { date, entries } = day;
             for (const item of entries) {
                 const parsed = parseLiEntry(item);
                 if (!parsed) continue;
+                if (parsed.leftTeam && parsed.rightTeam) {
+                    const popoMatch = popoMatchLives.find(m =>
+                        (m.leftTeam === parsed.leftTeam && m.rightTeam === parsed.rightTeam) ||
+                        (m.leftTeam === parsed.rightTeam && m.rightTeam === parsed.leftTeam)
+                    );
+                    if (popoMatch) {
+                        parsed.liveHtmls = popoMatch.liveLinks.concat(parsed.liveHtmls);
+                    }
+                }
                 rows.push({
                     date,
                     time: parsed.time,
@@ -1232,6 +1301,8 @@ footer { margin: 24px 0; color: var(--muted); text-align: center; font-size: 14p
   border: none;
   background: #fff;
 }
+
+#section-schedule .table a {margin-right: 12px;}
 
 @media (max-width: 768px) {
   .standing-layout { grid-template-columns: 1fr; }
