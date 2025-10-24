@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         unified pages for my favourites
 // @namespace    https://rubinbaby.github.io/userscripts
-// @version      0.0.3
+// @version      0.0.4
 // @description  清空目标网页并显示自己常用的网页（首页/体育/新闻/天气/关于）
 // @author       yinxiao
 // @match        https://news.zhibo8.com/zuqiu/
@@ -27,11 +27,12 @@
 
     const ROUTE = {
         DEFAULT_HASH: '#sports-news',
-        VALID: new Set(['home', 'sports-schedule', 'sports-news', 'sports-standing', 'global-news', 'weather', 'about']),
+        VALID: new Set(['home', 'sports-schedule', 'sports-news', 'sports-match-live', 'sports-standing', 'global-news', 'weather', 'about']),
     };
 
     const URLS = {
         SPORTS_NEWS_DEFAULT: 'https://news.zhibo8.com/zuqiu/more.htm?label=%E6%9B%BC%E8%81%94',
+        SPORTS_MATCH_LIVE_DEFAULT: 'https://www.188bifen.com/',
         STANDING_DEFAULT: 'https://data.zhibo8.cc/html/match.html?match=英超&saishi=24',
         GLOBAL_NEWS_DEFAULT: 'https://www.kankanews.com/k24',
         WEATHER_DEFAULT: 'https://www.nmc.cn/publish/forecast/ASH/fengxian.html',
@@ -572,6 +573,7 @@
             'sports-schedule': dom.qs('#section-schedule'),
             'sports-news': dom.qs('#section-news'),
             'sports-standing': dom.qs('#section-standing'),
+            'sports-match-live': dom.qs('#section-match-live'),
         };
 
         Object.entries(sections).forEach(([key, el]) => {
@@ -585,6 +587,7 @@
     function refreshSection(name) {
         // Clean up iframes when leaving sections
         if (name !== 'sports-news') destroyIframe('#sports-news-iframe');
+        if (name !== 'sports-match-live') destroyIframe('#sports-match-live-iframe');
         if (name !== 'global-news') destroyIframe('#global-news-iframe');
         if (name !== 'weather') destroyIframe('#weather-iframe');
 
@@ -597,6 +600,13 @@
                 iframeId: 'sports-news-iframe',
                 title: '体育新闻',
                 src: URLS.SPORTS_NEWS_DEFAULT,
+            });
+        } else if (name === 'sports-match-live') {
+            ensureIframe({
+                wrapSelector: '#section-match-live .sports-match-live-iframe-wrap',
+                iframeId: 'sports-match-live-iframe',
+                title: '比赛直播',
+                src: URLS.SPORTS_MATCH_LIVE_DEFAULT,
             });
         } else if (name === 'sports-standing') {
             const first = dom.qs('#section-standing .standing-side-item.active') || dom.qs('#section-standing .standing-side-item');
@@ -962,6 +972,7 @@ footer { margin: 24px 0; color: var(--muted); text-align: center; font-size: 14p
 }
 
 .sports-news-iframe-wrap,
+.sports-match-live-iframe-wrap,
 .standing-iframe-wrap,
 .global-news-iframe-wrap,
 .weather-iframe-wrap {
@@ -972,6 +983,7 @@ footer { margin: 24px 0; color: var(--muted); text-align: center; font-size: 14p
   border-radius: 12px;
 }
 .sports-news-iframe-wrap iframe,
+.sports-match-live-iframe-wrap iframe,
 .standing-iframe-wrap iframe,
 .global-news-iframe-wrap iframe,
 .weather-iframe-wrap iframe {
@@ -1012,6 +1024,7 @@ footer { margin: 24px 0; color: var(--muted); text-align: center; font-size: 14p
   <div class="subnav" aria-label="体育子菜单">
     <a class="subtab" href="#sports-news" data-subtab="sports-news">新闻</a>
     <a class="subtab" href="#sports-schedule" data-subtab="sports-schedule">赛程</a>
+    <a class="subtab" href="#sports-match-live" data-subtab="sports-match-live">比分直播</a>
     <a class="subtab" href="#sports-standing" data-subtab="sports-standing">积分排名</a>
   </div>
 
@@ -1039,6 +1052,13 @@ footer { margin: 24px 0; color: var(--muted); text-align: center; font-size: 14p
     <h2 class="title">足球新闻</h2>
     <div class="sports-news-content">
       <div class="sports-news-iframe-wrap"></div>
+    </div>
+  </div>
+
+  <div id="section-match-live" class="section hidden">
+    <h2 class="title">比分直播</h2>
+    <div class="sports-match-live-content">
+      <div class="sports-match-live-iframe-wrap"></div>
     </div>
   </div>
 
