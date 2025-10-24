@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         unified pages for my favourites
 // @namespace    https://rubinbaby.github.io/userscripts
-// @version      0.0.5
+// @version      0.0.6
 // @description  清空目标网页并显示自己常用的网页（首页/体育/新闻/天气/关于）
 // @author       yinxiao
 // @match        https://news.zhibo8.com/zuqiu/
@@ -23,7 +23,7 @@
     const DEBUG = false;
 
     const STORAGE = {
-        TAGS: 'sportsFilterTags',
+        SCHEDULE_TAGS: 'sportsFilterTags',
         SPORTS_NEWS_TAGS: 'sportsNewsFilterTags',
         THEME: 'siteThemePreference', // 'light' | 'dark' | 'auto'
     };
@@ -118,14 +118,13 @@
         }
     }
 
+    function normalizeTag(s) {
+        return String(s || '').trim();
+    }
+
     // -------------------------------
     // Net
     // -------------------------------
-    function fetchWithTimeout(url, options, ms) {
-        const controller = new AbortController();
-        const id = setTimeout(() => controller.abort(), ms);
-        return fetch(url, { ...options, signal: controller.signal }).finally(() => clearTimeout(id));
-    }
 
     function gmRequestText(url, timeoutMs = 5000) {
         return new Promise((resolve, reject) => {
@@ -303,25 +302,251 @@
     }
 
     // -------------------------------
+    // 通用 tag 存储与标签过滤 UI 工厂
+    // -------------------------------
+    function createTagStore(storageKey) {
+        const set = new Set();
+        function load() {
+            const arr = loadJSON(storageKey, []);
+            const list = Array.isArray(arr) ? arr.map(normalizeTag).filter(Boolean) : [];
+            set.clear();
+            list.forEach(t => set.add(t));
+        }
+        function save() {
+            saveJSON(storageKey, Array.from(set));
+        }
+        function add(v) { set.add(normalizeTag(v)); save(); }
+        function remove(v) { set.delete(v); save(); }
+        function clear() { set.clear(); save(); }
+        function listAll() { return Array.from(set); }
+        function has(v) { return set.has(normalizeTag(v)); }
+        return { load, save, add, remove, clear, listAll, has, __set: set };
+    }
+
+    function mountTagFilterUI({ tagStore, inputSelector, addBtnSelector, tagsContainerSelector, onChange }) {
+        const inputEl = dom.qs(inputSelector);
+        const addBtn = dom.qs(addBtnSelector);
+        const tagsEl = dom.qs(tagsContainerSelector);
+        if (!inputEl || !addBtn || !tagsEl) return;
+
+        tagStore.load();
+        drawTags();
+        if (typeof onChange === 'function') onChange(tagStore.listAll());
+
+        function addFromInput() {
+            const val = normalizeTag(inputEl.value || '');
+            if (!val || tagStore.has(val)) { inputEl.value = ''; return; }
+            tagStore.add(val);
+            inputEl.value = '';
+            drawTags();
+            onChange && onChange(tagStore.listAll());
+        }
+        addBtn.addEventListener('click', addFromInput);
+        inputEl.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); addFromInput(); } });
+
+        function drawTags() {
+            tagsEl.innerHTML = '';
+            const list = tagStore.listAll();
+            if (list.length === 0) {
+                const hint = dom.create('span', { className: 'filter-hint', textContent: '未添加过滤标签：当前显示全部' });
+                tagsEl.appendChild(hint);
+                return;
+            }
+            list.forEach(tag => {
+                const chip = dom.create('span', { className: 'filter-chip', textContent: tag });
+                const removeBtn = dom.create('button', { className: 'filter-chip-remove', textContent: '×' });
+                removeBtn.setAttribute('aria-label', `移除过滤标签 ${tag}`);
+                removeBtn.addEventListener('click', () => {
+                    tagStore.remove(tag);
+                    drawTags();
+                    onChange && onChange(tagStore.listAll());
+                });
+                chip.appendChild(removeBtn);
+                tagsEl.appendChild(chip);
+            });
+            const clearBtn = dom.create('button', { className: 'filter-clear', textContent: '清空标签' });
+            clearBtn.addEventListener('click', () => {
+                tagStore.clear();
+                drawTags();
+                onChange && onChange(tagStore.listAll());
+            });
+            tagsEl.appendChild(clearBtn);
+        }
+    }
+
+    /**
+     * 通用：按日期列表分批并发拉取数据
+     * @param {string[]} dateList - 已格式化的日期字符串数组
+     * @param {object} opts
+     *    - batchSize {number} 并发批次大小
+     *    - perDateFetch {function(dateStr): Promise<any>} 单日拉取并返回已归一化的结果（可为任意结构）
+     *    - onBatchProgress {function({startIndex, batch, batchResults})} 可选，批次完成回调
+     * @returns {Promise<any[]>} 按输入日期顺序合并的结果数组（每项为 perDateFetch 返回的项/结构）
+     */
+    async function batchFetchByDates(dateList, { batchSize = 6, perDateFetch, onBatchProgress = null } = {}) {
+        if (!Array.isArray(dateList) || dateList.length === 0) return [];
+        if (typeof perDateFetch !== 'function') throw new Error('perDateFetch must be a function');
+
+        const allResults = [];
+        for (let i = 0; i < dateList.length; i += batchSize) {
+            const batch = dateList.slice(i, i + batchSize);
+            // 并发拉取本批次的每个日期
+            const promises = batch.map((d) => (async () => {
+                try {
+                    return await perDateFetch(d);
+                } catch (e) {
+                    // 每个单日请求错误单独吞掉，返回空的占位结构（由调用方决定如何处理）
+                    console.warn('batchFetchByDates: perDateFetch error for', d, e);
+                    return null;
+                }
+            })());
+
+            const batchResults = await Promise.all(promises);
+            // 将非空结果按原始日期顺序 push
+            batchResults.forEach((r) => {
+                if (r != null) {
+                    // 如果 perDateFetch 返回的是数组（比如多条条目），合并数组；否则当作单个项加入
+                    if (Array.isArray(r)) allResults.push(...r);
+                    else allResults.push(r);
+                }
+            });
+
+            if (typeof onBatchProgress === 'function') {
+                try { onBatchProgress({ startIndex: i, batch, batchResults }); } catch { /* ignore progress errors */ }
+            }
+            // 短暂让出线程以便 UI 更新（可选）
+            await new Promise((res) => setTimeout(res, 10));
+        }
+        return allResults;
+    }
+
+    /**
+     * 通用侧边菜单绑定
+     * containerSelector, itemSelector, onSelect(itemEl)
+     */
+    function bindSideMenu(containerSelector, itemSelector, onSelect) {
+        const menu = dom.qs(containerSelector);
+        if (!menu || menu.__bound) return;
+        menu.__bound = true;
+        menu.addEventListener('click', (e) => {
+            const btn = e.target.closest(itemSelector);
+            if (!btn) return;
+            dom.qsa(itemSelector, menu).forEach((el) => el.classList.toggle('active', el === btn));
+            try { onSelect(btn); } catch (err) { console.warn(err); }
+        });
+    }
+
+    /**
+     * 通用按标签过滤行
+     * rows: [{ labels: [...] , ... }]
+     * tags: ['x','y']
+     * matcher?: (rowLabel, tag) => boolean
+     */
+    function filterRowsByTags(rows, tags, matcher) {
+        if (!tags || tags.length === 0) return rows;
+        const norm = tags.map(normalizeTag);
+        const matchFn = typeof matcher === 'function' ? matcher : ((l, t) => (l === t || l.toLowerCase() === t.toLowerCase()));
+        return rows.filter((r) => {
+            const labels = (r.labels || []).map(normalizeTag);
+            return norm.some(tag => labels.some(l => matchFn(l, tag)));
+        });
+    }
+
+    /**
+     * setupFilterForSection：通用化 tagStore + mountTagFilterUI 初始化并同步到 activeSet
+     * opts:
+     *   storageKey, inputSelector, addBtnSelector, tagsContainerSelector,
+     *   onChangeRender(tags) -> 渲染回调
+     */
+    function setupFilterForSection({ storageKey, inputSelector, addBtnSelector, tagsContainerSelector, activeSet, onChangeRender }) {
+        const store = createTagStore(storageKey);
+        mountTagFilterUI({
+            tagStore: store,
+            inputSelector,
+            addBtnSelector,
+            tagsContainerSelector,
+            onChange: (tags) => {
+                if (typeof onChangeRender === 'function') onChangeRender(tags);
+            }
+        });
+        // populate active set from store
+        store.listAll().forEach(t => activeSet && activeSet.add(t));
+        return store;
+    }
+
+    /**
+     * mountStatusArea：在 section 中插入 status 元素并控制表格显示/隐藏
+     * usage:
+     *   const s = mountStatusArea('#section-news', '.table');
+     *   s.setText('加载中...');
+     *   // 完成后
+     *   s.clear();
+     */
+    function mountStatusArea(sectionSelector, tableSelector) {
+        const section = dom.qs(sectionSelector);
+        if (!section) return null;
+        const tableEl = dom.qs(tableSelector, section);
+        const statusEl = dom.create('div');
+        Object.assign(statusEl.style, { marginTop: '8px', color: 'var(--muted)' });
+        if (tableEl) {
+            tableEl.classList.toggle('hidden', true);
+            section.insertBefore(statusEl, tableEl);
+        } else {
+            section.appendChild(statusEl);
+        }
+        return {
+            statusEl,
+            tableEl,
+            setText(text) { if (statusEl) statusEl.textContent = String(text || ''); },
+            clear() {
+                if (statusEl && statusEl.parentNode) statusEl.parentNode.removeChild(statusEl);
+                if (tableEl) tableEl.classList.toggle('hidden', false);
+            }
+        };
+    }
+
+    /* 通用：创建空结果行 */
+    function createEmptyRow(tbody, colspan, text) {
+        const tr = dom.create('tr');
+        const tdEl = dom.create('td', { textContent: String(text || '') });
+        tdEl.colSpan = colspan;
+        tr.appendChild(tdEl);
+        tbody.appendChild(tr);
+    }
+
+    /* 通用表格渲染器
+    columns: [{ render: (row)=>NodeOrString, width? }]
+    */
+    function renderTableGeneric(tbody, rows, columns) {
+        tbody.innerHTML = '';
+        if (!rows || rows.length === 0) {
+            const colspan = columns ? columns.length : 1;
+            createEmptyRow(tbody, colspan, '未找到匹配的记录');
+            return;
+        }
+        rows.forEach((r) => {
+            const tr = dom.create('tr');
+            for (const col of columns) {
+                const td = dom.create('td');
+                if (col && typeof col.render === 'function') {
+                    const v = col.render(r);
+                    if (v instanceof Node) td.appendChild(v);
+                    else td.innerHTML = String(v == null ? '-' : v);
+                } else {
+                    td.textContent = '-';
+                }
+                if (col && col.style) Object.assign(td.style, col.style);
+                tr.appendChild(td);
+            }
+            tbody.appendChild(tr);
+        });
+    }
+
+    // -------------------------------
     // Schedule (Sports)
     // -------------------------------
-    let ALL_ROWS = [];
-    const ACTIVE_TAGS = new Set();
-
-    function normalizeTag(s) {
-        return String(s || '').trim();
-    }
-
-    function loadTags() {
-        const arr = loadJSON(STORAGE.TAGS, []);
-        const list = Array.isArray(arr) ? arr.map(normalizeTag).filter(Boolean) : [];
-        ACTIVE_TAGS.clear();
-        list.forEach((t) => ACTIVE_TAGS.add(t));
-    }
-
-    function saveTags() {
-        saveJSON(STORAGE.TAGS, Array.from(ACTIVE_TAGS));
-    }
+    let SCHEDULE_ROWS = [];
+    const SCHEDULE_ACTIVE_TAGS = new Set();
 
     function getAllAnchorHTMLByKeywords(liElement, keywords = ['互动直播', '文字']) {
         if (!liElement) return [];
@@ -375,157 +600,60 @@
         return { date: dateStr, entries: [] };
     }
 
-    function filterRowsByInputTags(rows, tags) {
-        if (!tags || tags.length === 0) return rows;
-        const normTags = tags.map(normalizeTag);
-        return rows.filter((r) => {
-            const rowLabels = (r.labels || []).map(normalizeTag);
-            // exact match or case-insensitive exact
-            return normTags.some((tag) => rowLabels.some((l) => l === tag || l.toLowerCase() === tag.toLowerCase()));
-            // 如需模糊匹配，启用下面一行：
-            // return normTags.some(tag => rowLabels.some(l => l.includes(tag) || tag.includes(l)));
-        });
-    }
-
     function renderScheduleTable(tbody, rows) {
-        tbody.innerHTML = '';
-        if (!rows || rows.length === 0) {
-            const tr = dom.create('tr');
-            const tdEl = dom.create('td', { textContent: '未找到匹配的赛程' });
-            tdEl.colSpan = 5;
-            tr.appendChild(tdEl);
-            tbody.appendChild(tr);
-            return;
-        }
-        rows.forEach((r) => {
-            const tr = dom.create('tr');
-            const tdDateTime = dom.create('td', { textContent: `${r.date} ${r.time || ''}`.trim() });
-            const tdTournament = dom.create('td', { textContent: r.tournament || '-' });
-            const tdMatchup = dom.create('td');
-            tdMatchup.style.whiteSpace = 'pre-wrap';
-            tdMatchup.innerHTML = r.matchupHtml || '-';
-            const tdLive = dom.create('td');
-            tdLive.style.whiteSpace = 'pre-wrap';
-            tdLive.innerHTML = (r.liveHtmls || []).join('') || '-';
-
-            tr.appendChild(tdDateTime);
-            tr.appendChild(tdTournament);
-            tr.appendChild(tdMatchup);
-            tr.appendChild(tdLive);
-            tbody.appendChild(tr);
-        });
+        renderTableGeneric(tbody, rows, [
+            { render: (r) => `${r.date} ${r.time || ''}`.trim() },
+            { render: (r) => r.tournament || '-' },
+            { render: (r) => { const td = dom.create('div'); td.style.whiteSpace = 'pre-wrap'; td.innerHTML = r.matchupHtml || '-'; return td; } },
+            { render: (r) => { const td = dom.create('div'); td.style.whiteSpace = 'pre-wrap'; td.innerHTML = (r.liveHtmls || []).join('') || '-'; return td; } },
+        ]);
     }
 
-    function setupInputTagFilter() {
-        const inputEl = dom.qs('#schedule-filter-input');
-        const addBtn = dom.qs('#schedule-filter-add');
-        const tagsEl = dom.qs('#schedule-filter-tags');
-        const tbody = dom.qs('#section-schedule .table tbody');
-        if (!inputEl || !addBtn || !tagsEl || !tbody) return;
-
-        // restore tags
-        loadTags();
-        drawTags();
-
-        function addTagFromInput() {
-            const val = normalizeTag(inputEl.value || '');
-            if (!val || ACTIVE_TAGS.has(val)) {
-                inputEl.value = '';
-                return;
-            }
-            ACTIVE_TAGS.add(val);
-            inputEl.value = '';
-            saveTags();
-            drawTags();
-            applyFilter();
-        }
-
-        addBtn.addEventListener('click', addTagFromInput);
-        inputEl.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                addTagFromInput();
+    function setupScheduleFilter() {
+        setupFilterForSection({
+            storageKey: STORAGE.SCHEDULE_TAGS,
+            inputSelector: '#schedule-filter-input',
+            addBtnSelector: '#schedule-filter-add',
+            tagsContainerSelector: '#schedule-filter-tags',
+            activeSet: SCHEDULE_ACTIVE_TAGS,
+            onChangeRender: (tags) => {
+                const tbody = dom.qs('#section-schedule .table tbody');
+                if (!tbody) return;
+                const filtered = filterRowsByTags(SCHEDULE_ROWS, tags);
+                renderScheduleTable(tbody, filtered);
             }
         });
-
-        function drawTags() {
-            tagsEl.innerHTML = '';
-            if (ACTIVE_TAGS.size === 0) {
-                const hint = dom.create('span', { className: 'filter-hint', textContent: '未添加过滤标签：当前显示全部赛程' });
-                tagsEl.appendChild(hint);
-            } else {
-                ACTIVE_TAGS.forEach((tag) => {
-                    const chip = dom.create('span', { className: 'filter-chip', textContent: tag });
-                    const removeBtn = dom.create('button', { className: 'filter-chip-remove', textContent: '×' });
-                    removeBtn.setAttribute('aria-label', `移除过滤标签 ${tag}`);
-                    removeBtn.addEventListener('click', () => {
-                        ACTIVE_TAGS.delete(tag);
-                        saveTags();
-                        drawTags();
-                        applyFilter();
-                    });
-                    chip.appendChild(removeBtn);
-                    tagsEl.appendChild(chip);
-                });
-                const clearBtn = dom.create('button', { className: 'filter-clear', textContent: '清空标签' });
-                clearBtn.addEventListener('click', () => {
-                    ACTIVE_TAGS.clear();
-                    saveTags();
-                    drawTags();
-                    applyFilter();
-                });
-                tagsEl.appendChild(clearBtn);
-            }
-        }
-
-        function applyFilter() {
-            const arrTags = Array.from(ACTIVE_TAGS);
-            const filtered = filterRowsByInputTags(ALL_ROWS, arrTags);
-            renderScheduleTable(tbody, filtered);
-        }
     }
 
     async function hydrateScheduleForNextMonth() {
-        const section = dom.qs('#section-schedule');
-        if (!section) return;
+        const s = mountStatusArea('#section-schedule', '.table');
+        if (!s) return;
         const tbody = dom.qs('#section-schedule .table tbody');
         const titleEl = dom.qs('#section-schedule .title');
         if (!tbody) return;
 
-        // status area
-        const statusEl = dom.create('div');
-        Object.assign(statusEl.style, { marginTop: '8px', color: 'var(--muted)' });
-        const tableEl = dom.qs('#section-schedule .table');
-        tableEl.classList.toggle('hidden', true);
-        section.insertBefore(statusEl, tableEl);
-        statusEl.textContent = '正在加载未来一个月赛程…';
+        s.setText('正在加载未来一个月赛程…');
 
         const startDate = new Date();
         const endDate = addDays(startDate, 30);
         const dateList = enumerateDates(startDate, endDate);
         const batchSize = 6;
 
-        const allResults = [];
-        try {
-            for (let i = 0; i < dateList.length; i += batchSize) {
-                const batch = dateList.slice(i, i + batchSize);
-                const batchPromises = batch.map(async (d) => {
-                    try {
-                        const res = await gmRequestText(URLS.MATCH_API(d), 12000);
-                        const json = safeJsonParse(res);
-                        return normalizeDailyEntries(json, d);
-                    } catch {
-                        return { date: d, entries: [] };
-                    }
-                });
-                const batchResults = await Promise.all(batchPromises);
-                allResults.push(...batchResults);
+        const allResults = await batchFetchByDates(dateList, {
+            batchSize,
+            perDateFetch: async (d) => {
+                try {
+                    const res = await gmRequestText(URLS.MATCH_API(d), 12000);
+                    const json = safeJsonParse(res);
+                    return normalizeDailyEntries(json, d);
+                } catch {
+                    return { date: d, entries: [] };
+                }
+            },
+            onBatchProgress: ({ startIndex, batch }) => {
+                s.setText(`正在加载未来一个月赛程…（已完成 ${Math.min(startIndex + batch.length, dateList.length)}/${dateList.length}）`);
             }
-        } catch (err) {
-            console.error(err);
-            statusEl.textContent = `加载失败：${err.message || err}`;
-            return;
-        }
+        });
 
         const rows = [];
         for (const day of allResults) {
@@ -549,17 +677,17 @@
             return (a.time || '').localeCompare(b.time || '');
         });
 
-        ALL_ROWS = rows;
+        SCHEDULE_ROWS = rows;
 
         if (titleEl) {
             titleEl.textContent = `近期赛程（${dateList[0]} 至 ${dateList[dateList.length - 1]}）`;
         }
 
         // Apply current tags then render
-        const filtered = filterRowsByInputTags(ALL_ROWS, Array.from(ACTIVE_TAGS));
+        const filtered = filterRowsByTags(SCHEDULE_ROWS, Array.from(SCHEDULE_ACTIVE_TAGS));
         renderScheduleTable(tbody, filtered);
-        statusEl.textContent = '';
-        tableEl.classList.toggle('hidden', false);
+        s.setText('');
+        s.clear();
     }
 
     // -------------------------------
@@ -568,214 +696,111 @@
     let SPORTS_NEWS_ROWS = [];
     const SPORTS_NEWS_ACTIVE_TAGS = new Set();
 
-    function loadNewsTags() {
-        const arr = loadJSON(STORAGE.SPORTS_NEWS_TAGS, []);
-        const list = Array.isArray(arr) ? arr.map(normalizeTag).filter(Boolean) : [];
-        SPORTS_NEWS_ACTIVE_TAGS.clear();
-        list.forEach(t => SPORTS_NEWS_ACTIVE_TAGS.add(t));
-    }
-    function saveNewsTags() {
-        saveJSON(STORAGE.SPORTS_NEWS_TAGS, Array.from(SPORTS_NEWS_ACTIVE_TAGS));
-    }
-
-    // 过滤器 UI
-    function setupNewsInputTagFilter() {
-        const inputEl = dom.qs('#news-filter-input');
-        const addBtn = dom.qs('#news-filter-add');
-        const tagsEl = dom.qs('#news-filter-tags');
-        const tbody = dom.qs('#section-news .table tbody');
-        if (!inputEl || !addBtn || !tagsEl || !tbody) return;
-
-        loadNewsTags();
-        drawTags();
-        applyFilter();
-
-        function addTagFromInput() {
-            const val = normalizeTag(inputEl.value || '');
-            if (!val || SPORTS_NEWS_ACTIVE_TAGS.has(val)) {
-                inputEl.value = '';
-                return;
-            }
-            SPORTS_NEWS_ACTIVE_TAGS.add(val);
-            inputEl.value = '';
-            saveNewsTags();
-            drawTags();
-            applyFilter();
-        }
-
-        addBtn.addEventListener('click', addTagFromInput);
-        inputEl.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                addTagFromInput();
+    function setupNewsFilter() {
+        setupFilterForSection({
+            storageKey: STORAGE.SPORTS_NEWS_TAGS,
+            inputSelector: '#news-filter-input',
+            addBtnSelector: '#news-filter-add',
+            tagsContainerSelector: '#news-filter-tags',
+            activeSet: SPORTS_NEWS_ACTIVE_TAGS,
+            onChangeRender: (tags) => {
+                const tbody = dom.qs('#section-news .table tbody');
+                if (!tbody) return;
+                const filtered = filterRowsByTags(SPORTS_NEWS_ROWS, tags);
+                renderNewsTable(tbody, filtered);
             }
         });
-
-        function drawTags() {
-            tagsEl.innerHTML = '';
-            if (SPORTS_NEWS_ACTIVE_TAGS.size === 0) {
-                const hint = dom.create('span', { className: 'filter-hint', textContent: '未添加过滤标签：当前显示全部新闻' });
-                tagsEl.appendChild(hint);
-            } else {
-                SPORTS_NEWS_ACTIVE_TAGS.forEach((tag) => {
-                    const chip = dom.create('span', { className: 'filter-chip', textContent: tag });
-                    const removeBtn = dom.create('button', { className: 'filter-chip-remove', textContent: '×' });
-                    removeBtn.setAttribute('aria-label', `移除过滤标签 ${tag}`);
-                    removeBtn.addEventListener('click', () => {
-                        SPORTS_NEWS_ACTIVE_TAGS.delete(tag);
-                        saveNewsTags();
-                        drawTags();
-                        applyFilter();
-                    });
-                    chip.appendChild(removeBtn);
-                    tagsEl.appendChild(chip);
-                });
-                const clearBtn = dom.create('button', { className: 'filter-clear', textContent: '清空标签' });
-                clearBtn.addEventListener('click', () => {
-                    SPORTS_NEWS_ACTIVE_TAGS.clear();
-                    saveNewsTags();
-                    drawTags();
-                    applyFilter();
-                });
-                tagsEl.appendChild(clearBtn);
-            }
-        }
-
-        function applyFilter() {
-            const tags = Array.from(SPORTS_NEWS_ACTIVE_TAGS);
-            const filtered = filterNewsRowsByTags(SPORTS_NEWS_ROWS, tags);
-            renderNewsTable(tbody, filtered);
-        }
     }
 
-    // 过滤逻辑：标签命中 OR 标题/来源包含
-    function filterNewsRowsByTags(rows, tags) {
-        if (!tags || tags.length === 0) return rows;
-        const normTags = tags.map(normalizeTag);
-        return rows.filter((r) => {
-            const labelList = (r.labels || []).map(normalizeTag);
-            return normTags.some((tag) => labelList.some((l) => l === tag || l.toLowerCase() === tag.toLowerCase()));
-        });
-    }
-
-    // 表格渲染
     function renderNewsTable(tbody, rows) {
-        tbody.innerHTML = '';
-        if (!rows || rows.length === 0) {
-            const tr = dom.create('tr');
-            const tdEl = dom.create('td', { textContent: '未找到匹配的新闻' });
-            tdEl.colSpan = 3;
-            tr.appendChild(tdEl);
-            tbody.appendChild(tr);
-            return;
-        }
-        rows.forEach((r) => {
-            const tr = dom.create('tr');
-            const tdDateTime = dom.create('td', { textContent: `${r.time || ''}`.trim() });
-            const tdType = dom.create('td', { textContent: r.type || '-' });
-            const tdTitle = dom.create('td'); tdTitle.style.whiteSpace = 'pre-wrap';
-            if (r.url) {
-                const a = dom.create('a', { href: r.url, textContent: r.title || '-', target: '_blank', rel: 'noopener noreferrer' });
-                tdTitle.appendChild(a);
-            } else {
-                tdTitle.textContent = r.title || '-';
-            }
+        renderTableGeneric(tbody, rows, [
+            { render: (r) => `${r.time || ''}`.trim() },
+            { render: (r) => r.type || '-' },
+            {
+                render: (r) => {
+                    const td = dom.create('div'); td.style.whiteSpace = 'pre-wrap';
+                    if (r.url) {
+                        const a = dom.create('a', { href: r.url, textContent: r.title || '-', target: '_blank', rel: 'noopener noreferrer' });
+                        td.appendChild(a);
+                    } else {
+                        td.textContent = r.title || '-';
+                    }
+                    return td;
+                }
+            },
+        ]);
+    }
 
-            tr.appendChild(tdDateTime);
-            tr.appendChild(tdType);
-            tr.appendChild(tdTitle);
-            tbody.appendChild(tr);
+    /**
+     * 通用新闻归一化
+     * opts: { baseHost, typeMapper: (item)=>typeString, urlPrefix }
+     */
+    function normalizeNewsList(json, { urlPrefix = '//news.zhibo8.com', typeMapper = () => '[新闻]' } = {}) {
+        const list = Array.isArray(json) ? json : (Array.isArray(json?.video_arr) ? json.video_arr : []);
+        return (list || []).map(item => {
+            const rawUrl = String(item.url || '');
+            const url = rawUrl ? (urlPrefix + rawUrl) : '';
+            return {
+                time: String(item.createtime || '').trim(),
+                title: String(item.title || '').trim(),
+                url: String(url).trim(),
+                labels: String(item.lable || '').split(',').map((l) => l.trim()).filter(Boolean),
+                type: String(typeMapper(item) || '').trim(),
+            };
         });
-    }
-
-    // 统一两个源的返回为统一条目
-    function normalizeNewsEntriesFromNews(json) {
-        const list = Array.isArray(json) ? json : (Array.isArray(json?.video_arr) ? json.video_arr : []);
-        return (list || []).map(item => ({
-            time: String(item.createtime || '').trim(),
-            title: String(item.title || '').trim(),
-            url: String(("//news.zhibo8.com" + item.url) || '').trim(),
-            labels: String(item.lable || '').split(',').map((l) => l.trim()).filter(Boolean),
-            type: '[新闻]',
-        }));
-    }
-    function normalizeNewsEntriesFromVideos(json) {
-        const list = Array.isArray(json) ? json : (Array.isArray(json?.video_arr) ? json.video_arr : []);
-        return (list || []).map(item => ({
-            time: String(item.createtime || '').trim(),
-            title: String(item.title || '').trim(),
-            url: String(("//www.zhibo8.com" + item.url) || '').trim(),
-            labels: String(item.lable || '').split(',').map((l) => l.trim()).filter(Boolean),
-            type: String((item.type === 'zuqiujijin' ? '[集锦]' : (item.type === 'zuqiuluxiang' ? '[录像]' : '')) || '').trim(),
-        }));
     }
 
     // 聚合两个 API：并发拉取 -> 归一化 -> 去重 -> 排序
     async function hydrateSportsNewsFromAPI(days = 7) {
-        const section = dom.qs('#section-news');
-        if (!section) return;
+        const s = mountStatusArea('#section-news', '.table');
+        if (!s) return;
         const tbody = dom.qs('#section-news .table tbody');
         const titleEl = dom.qs('#section-news .title');
         if (!tbody) return;
-
-        // 状态提示
-        const statusEl = dom.create('div');
-        Object.assign(statusEl.style, { marginTop: '8px', color: 'var(--muted)' });
-        const tableEl = dom.qs('#section-news .table');
-        tableEl.classList.toggle('hidden', true);
-        section.insertBefore(statusEl, tableEl);
-        statusEl.textContent = `正在加载最近 ${days} 天的新闻 …`;
+        s.setText(`正在加载最近 ${days} 天的新闻 …`);
 
         const startDate = addDays(new Date(), -days + 1);
         const endDate = new Date();
         const dateList = enumerateDates(startDate, endDate);
         const batchSize = 6;
 
-        const mergedRows = [];
-        try {
-            for (let i = 0; i < dateList.length; i += batchSize) {
-                const batch = dateList.slice(i, i + batchSize);
-                const batchPromises = batch.map(async (d) => {
-                    // 两源并发
-                    const pA = (async () => {
-                        try {
-                            const res = await gmRequestText(`${URLS.SPORTS_NEWS_API(d)}`, 12000);
-                            const json = safeJsonParse(res);
-                            return normalizeNewsEntriesFromNews(json, d);
-                        } catch {
-                            return [];
-                        }
-                    })();
-                    const pB = (async () => {
-                        try {
-                            const res = await gmRequestText(`${URLS.SPORTS_VIDEOS_API(d)}`, 12000);
-                            const json = safeJsonParse(res);
-                            return normalizeNewsEntriesFromVideos(json, d);
-                        } catch {
-                            return [];
-                        }
-                    })();
+        const mergedRows = await batchFetchByDates(dateList, {
+            batchSize,
+            perDateFetch: async (d) => {
+                const pA = (async () => {
+                    try {
+                        const res = await gmRequestText(URLS.SPORTS_NEWS_API(d), 12000);
+                        const json = safeJsonParse(res);
+                        return normalizeNewsList(json, { typeMapper: () => '[新闻]' });
+                    } catch {
+                        return [];
+                    }
+                })();
+                const pB = (async () => {
+                    try {
+                        const res = await gmRequestText(URLS.SPORTS_VIDEOS_API(d), 12000);
+                        const json = safeJsonParse(res);
+                        return normalizeNewsList(json, { urlPrefix: '//www.zhibo8.com', typeMapper: (item) => (item.type === 'zuqiujijin' ? '[集锦]' : (item.type === 'zuqiuluxiang' ? '[录像]' : '')) });
+                    } catch {
+                        return [];
+                    }
+                })();
 
-                    const [rowsA, rowsB] = await Promise.all([pA, pB]);
-                    return [...rowsA, ...rowsB];
-                });
-
-                const batchResults = await Promise.all(batchPromises);
-                batchResults.forEach(rows => mergedRows.push(...rows));
+                const [rowsA, rowsB] = await Promise.all([pA, pB]);
+                return [...(rowsA || []), ...(rowsB || [])]; // 返回数组，helper 会扁平合并
+            },
+            onBatchProgress: ({ startIndex, batch }) => {
+                s.setText(`正在加载最近 ${days} 天的新闻 …（已完成 ${Math.min(startIndex + batch.length, dateList.length)}/${dateList.length}）`);
             }
-        } catch (err) {
-            console.error(err);
-            statusEl.textContent = `加载新闻失败：${err.message || err}`;
-            return;
-        }
+        });
 
         // 排序：日期降序、时间降序
         mergedRows.sort((a, b) => {
-            const [aDate, aTime] = a.time.split(' ');
-            const [bDate, bTime] = b.time.split(' ');
-            const dateDiff = new Date(bDate) - new Date(aDate);
-            if (dateDiff !== 0) return dateDiff;
-            return bTime.localeCompare(aTime);
+            const [aDate, aTime = '00:00:00'] = String(a.time || '').split(' ');
+            const [bDate, bTime = '00:00:00'] = String(b.time || '').split(' ');
+            const ta = new Date(`${aDate}T${aTime}`);
+            const tb = new Date(`${bDate}T${bTime}`);
+            return tb - ta; // desc
         });
 
         // 转为渲染结构
@@ -791,10 +816,10 @@
             titleEl.textContent = `足球新闻（${dateList[0]} 至 ${dateList[dateList.length - 1]}）`;
         }
 
-        const filtered = filterNewsRowsByTags(SPORTS_NEWS_ROWS, Array.from(SPORTS_NEWS_ACTIVE_TAGS));
+        const filtered = filterRowsByTags(SPORTS_NEWS_ROWS, Array.from(SPORTS_NEWS_ACTIVE_TAGS));
         renderNewsTable(tbody, filtered);
-        statusEl.textContent = '';
-        tableEl.classList.toggle('hidden', false);
+        s.setText('');
+        s.clear();
     }
 
 
@@ -832,10 +857,10 @@
         if (name !== 'weather') destroyIframe('#weather-iframe');
 
         if (name === 'sports-schedule') {
-            setupInputTagFilter();
+            setupScheduleFilter();
             hydrateScheduleForNextMonth();
         } else if (name === 'sports-news') {
-            setupNewsInputTagFilter();
+            setupNewsFilter();
             hydrateSportsNewsFromAPI(14);
         } else if (name === 'sports-match-live') {
             ensureIframe({
@@ -853,7 +878,15 @@
                 title: '积分排名',
                 src,
             });
-            bindStandingSideMenu(); // bind only once; using event delegation
+            bindSideMenu('#section-standing .standing-side', '.standing-side-item', (btn) => {
+                const url = btn.dataset.url || URLS.STANDING_DEFAULT;
+                ensureIframe({
+                    wrapSelector: '#section-standing .standing-iframe-wrap',
+                    iframeId: 'standing-iframe',
+                    title: '积分排名',
+                    src: url,
+                });
+            });
         } else if (name === 'global-news') {
             ensureIframe({
                 wrapSelector: 'section#global-news .global-news-iframe-wrap',
@@ -870,44 +903,16 @@
                 title: '天气',
                 src,
             });
-            bindWeatherSideMenu();
+            bindSideMenu('section#weather .subnav', '.weather-side-item', (btn) => {
+                const url = btn.dataset.url || URLS.WEATHER_DEFAULT;
+                ensureIframe({
+                    wrapSelector: 'section#weather .weather-iframe-wrap',
+                    iframeId: 'weather-iframe',
+                    title: '天气',
+                    src: url,
+                });
+            });
         }
-    }
-
-    function bindStandingSideMenu() {
-        const menu = dom.qs('#section-standing .standing-side');
-        if (!menu || menu.__bound) return;
-        menu.__bound = true;
-        menu.addEventListener('click', (e) => {
-            const btn = e.target.closest('.standing-side-item');
-            if (!btn) return;
-            dom.qsa('.standing-side-item', menu).forEach((el) => el.classList.toggle('active', el === btn));
-            const url = btn.dataset.url || URLS.STANDING_DEFAULT;
-            ensureIframe({
-                wrapSelector: '#section-standing .standing-iframe-wrap',
-                iframeId: 'standing-iframe',
-                title: '积分排名',
-                src: url,
-            });
-        });
-    }
-
-    function bindWeatherSideMenu() {
-        const menu = dom.qs('section#weather .subnav');
-        if (!menu || menu.__bound) return;
-        menu.__bound = true;
-        menu.addEventListener('click', (e) => {
-            const btn = e.target.closest('.weather-side-item');
-            if (!btn) return;
-            dom.qsa('.weather-side-item', menu).forEach((el) => el.classList.toggle('active', el === btn));
-            const url = btn.dataset.url || URLS.WEATHER_DEFAULT;
-            ensureIframe({
-                wrapSelector: 'section#weather .weather-iframe-wrap',
-                iframeId: 'weather-iframe',
-                title: '天气',
-                src: url,
-            });
-        });
     }
 
     function bindMainNav() {
@@ -1234,9 +1239,9 @@ footer { margin: 24px 0; color: var(--muted); text-align: center; font-size: 14p
     `;
         document.head.appendChild(style);
 
-        const largerTableStyle = document.createElement('style');
-        largerTableStyle.id = 'larger-table-style';
-        largerTableStyle.textContent = `
+        if (!document.getElementById('larger-table-style')) {
+            const largerTableStyle = dom.create('style', { id: 'larger-table-style' });
+            largerTableStyle.textContent = `
   /* 全局表格字体放大 */
   .table {
     font-size: 20px;        /* 原本约 14px，这里统一调到 16px */
@@ -1258,7 +1263,8 @@ footer { margin: 24px 0; color: var(--muted); text-align: center; font-size: 14p
     }
   }
 `;
-        document.head.appendChild(largerTableStyle);
+            document.head.appendChild(largerTableStyle);
+        }
 
         const root = dom.create('div', { className: 'container' });
         root.innerHTML = `
