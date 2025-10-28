@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         unified pages for my favourites
 // @namespace    https://rubinbaby.github.io/userscripts
-// @version      0.0.8
+// @version      0.0.9
 // @description  清空目标网页并显示自己常用的网页（首页/体育/新闻/天气/关于）
 // @author       yinxiao
 // @match        https://news.zhibo8.com/zuqiu/
@@ -45,6 +45,7 @@
         MATCH_API: (dateStr) =>
             `https://api.qiumibao.com/application/saishi/index.php?_url=/getMatchByDate&date=${encodeURIComponent(dateStr)}&index_v2=1&_env=pc&_platform=pc`,
         POPO_ZHIBO: 'http://www.popozhibo.cc',
+        ZHIBO8_BASE: 'https://www.zhibo8.com',
     };
 
     const THEME = {
@@ -58,6 +59,10 @@
     // -------------------------------
     const log = (...args) => {
         if (DEBUG) console.log('[UnifiedPages]', ...args);
+    };
+
+    const warn = (...args) => {
+        if (DEBUG) console.warn('[UnifiedPages]', ...args);
     };
 
     const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
@@ -558,7 +563,7 @@
             if (keywords.some((kw) => html.includes(kw))) {
                 return newAnchors; // stop collecting once special keywords encountered
             }
-            newAnchors.push(a.outerHTML.trim().replaceAll('/zhibo', 'https://www.zhibo8.com/zhibo'));
+            newAnchors.push(a.outerHTML.trim().replaceAll('/zhibo', `${URLS.ZHIBO8_BASE}/zhibo`));
         }
         return newAnchors;
     }
@@ -823,8 +828,70 @@
         });
     }
 
+    function parseZhibo8RecommandEntries(htmlText) {
+        const results = [];
+        if (typeof htmlText !== 'string' || !htmlText) return results;
+        const wrapper = dom.create('div');
+        wrapper.innerHTML = htmlText;
+        const videoItems = wrapper.querySelectorAll('.recommend .zuqiu-video ._content a');
+        const newVideoItems = [];
+        for (const a of videoItems) {
+            newVideoItems.push(a.outerHTML.trim().replaceAll('href="/zuqiu', `href="${URLS.ZHIBO8_BASE}/zuqiu`));
+        }
+        const newsItems = wrapper.querySelectorAll('.recommend .zuqiu-news ._content a');
+        const newNewsItems = [];
+        for (const a of newsItems) {
+            newNewsItems.push(a.outerHTML.trim());
+        }
+        return { videoItems: newVideoItems, newsItems: newNewsItems };
+    }
+
+    function renderHotBlocks(recommends) {
+        try {
+            const videosWrap = dom.qs('#sports-hot-videos .hot-list');
+            const newsWrap = dom.qs('#sports-hot-news .hot-list');
+            if (!videosWrap || !newsWrap) return;
+
+            const { videoItems, newsItems } = recommends || { videoItems: [], newsItems: [] };
+
+            const htmlStringToNodeViaTemplate = (html) => {
+                if (typeof html !== 'string' || !html.trim()) return null;
+                const tpl = document.createElement('template');
+                tpl.innerHTML = html.trim();
+                // 片段里可能有多个节点，这里取第一个；如需全部，遍历 tpl.content.childNodes
+                return tpl.content.firstElementChild || null;
+            }
+
+            // 渲染工具
+            const renderList = (wrap, items) => {
+                wrap.innerHTML = '';
+                if (!items.length) {
+                    const div = dom.create('div', { textContent: '暂无内容' });
+                    wrap.appendChild(div);
+                    return;
+                }
+                items.forEach(item => {
+                    const node = htmlStringToNodeViaTemplate(item);
+                    if (node) {
+                        wrap.appendChild(node);
+                    }
+                });
+            };
+
+            renderList(videosWrap, videoItems);
+            renderList(newsWrap, newsItems);
+        } catch (e) {
+            warn('renderHotBlocks error', e);
+        }
+    }
+
     // 聚合两个 API：并发拉取 -> 归一化 -> 去重 -> 排序
     async function hydrateSportsNewsFromAPI(days = 7) {
+        const zhibo8RecommendHtml = await gmRequestText(URLS.ZHIBO8_BASE, 15000);
+        const zhibo8Recommends = parseZhibo8RecommandEntries(zhibo8RecommendHtml);
+        log(zhibo8Recommends);
+        renderHotBlocks(zhibo8Recommends);
+
         const s = mountStatusArea('#section-news', '.table');
         if (!s) return;
         const tbody = dom.qs('#section-news .table tbody');
@@ -1308,8 +1375,116 @@ footer { margin: 24px 0; color: var(--muted); text-align: center; font-size: 14p
 
 #section-schedule .table a {margin-right: 12px;}
 
+/* 热门视频 / 热门新闻样式 */
+.hot-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin: 10px 0 8px;
+}
+
+.hot-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px;
+}
+
+.hot-title {
+  margin: 0 0 8px;
+  font-size: 16px;
+  color: var(--text);
+}
+
+.hot-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+#sports-hot-videos, #sports-hot-news {
+  zoom: 1.5;
+}
+#sports-hot-videos .hot-list {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+#sports-hot-videos .list-item {
+    display: block;
+    width: 112px
+}
+
+#sports-hot-videos .list-item:not( :nth-child(3n+3)) {
+    margin-right: 12px
+}
+
+#sports-hot-videos .list-item:nth-child(n+4) {
+    margin-top: 12px
+}
+
+#sports-hot-videos .list-item:hover ._title {
+    color: #0082ff
+}
+
+#sports-hot-videos .list-item:hover .thumb-box img {
+    -webkit-transform: scale(1.1);
+    transform: scale(1.1)
+}
+
+#sports-hot-videos .list-item .thumb-box {
+    width: 112px;
+    height: 80px;
+    border-radius: 4px;
+    background-color: #eee;
+    overflow: hidden
+}
+
+#sports-hot-videos .list-item .thumb-box img {
+    width: 100%;
+    height: 100%;
+    -o-object-fit: cover;
+    object-fit: cover;
+    border-radius: inherit;
+    -webkit-transform: scale(1.01);
+    transform: scale(1.01);
+    -webkit-transform-origin: center;
+    transform-origin: center;
+    -webkit-transition: -webkit-transform .3s;
+    transition: -webkit-transform .3s;
+    transition: transform .3s;
+    transition: transform .3s, -webkit-transform .3s;
+    vertical-align: top
+}
+
+#sports-hot-videos .list-item ._title {
+    margin-top: 10px;
+    height: 36px;
+    line-height: 18px;
+    font-size: 14px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2
+}
+
+#sports-hot-news .list-item {
+    display: block;
+    height: 20px;
+    line-height: 20px;
+    font-size: 14px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.hot-list a:visited { color: #BC62C2; }
+
 @media (max-width: 768px) {
-  .standing-layout { grid-template-columns: 1fr; }
+  .standing-layout, .hot-grid { grid-template-columns: 1fr; }
 }
     `;
         document.head.appendChild(style);
@@ -1319,11 +1494,9 @@ footer { margin: 24px 0; color: var(--muted); text-align: center; font-size: 14p
             largerTableStyle.textContent = `
   /* 全局表格字体放大 */
   .table {
-    font-size: 20px;        /* 原本约 14px，这里统一调到 16px */
-    line-height: 1.8;       /* 增加行高，提升密集数据的可读性 */
+    zoom: 1.5;
   }
   .table th {
-    font-size: 20px;
     font-weight: 600;
   }
   .table a:visited { color: #BC62C2; }
@@ -1331,11 +1504,11 @@ footer { margin: 24px 0; color: var(--muted); text-align: center; font-size: 14p
   /* 小屏适配：略微缩小，避免换行过多 */
   @media (max-width: 640px) {
     .table {
-      font-size: 15px;
+      font-size: 14px;
       line-height: 1.55;
     }
     .table th {
-      font-size: 15px;
+      font-size: 14px;
     }
   }
 `;
@@ -1392,6 +1565,18 @@ footer { margin: 24px 0; color: var(--muted); text-align: center; font-size: 14p
 
   <div id="section-news" class="section hidden">
     <h2 class="title">足球新闻</h2>
+
+    <!-- 热门视频 / 热门新闻（展示区） -->
+    <div class="hot-grid" aria-label="热门内容">
+        <section class="hot-card" id="sports-hot-videos">
+            <h3 class="hot-title">热门视频</h3>
+            <div class="hot-list"></div>
+        </section>
+        <section class="hot-card" id="sports-hot-news">
+            <h3 class="hot-title">热门新闻</h3>
+            <div class="hot-list"></div>
+        </section>
+    </div>
 
     <div id="news-filter-bar" class="filter-bar" role="group" aria-label="新闻过滤器">
         <input id="news-filter-input" type="text" placeholder="输入过滤词（如：曼联、英超、转会）后回车或点添加" />
