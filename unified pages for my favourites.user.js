@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         unified pages for my favourites
 // @namespace    https://rubinbaby.github.io/userscripts
-// @version      0.0.7
+// @version      0.0.8
 // @description  清空目标网页并显示自己常用的网页（首页/体育/新闻/天气/关于）
 // @author       yinxiao
 // @match        https://news.zhibo8.com/zuqiu/
@@ -661,7 +661,7 @@
             { render: (r) => `${r.date} ${r.time || ''}`.trim() },
             { render: (r) => r.tournament || '-' },
             { render: (r) => { const td = dom.create('div'); td.style.whiteSpace = 'pre-wrap'; td.innerHTML = r.matchupHtml || '-'; return td; } },
-            { render: (r) => { const td = dom.create('div'); td.style.whiteSpace = 'pre-wrap'; td.innerHTML = (r.liveHtmls || []).join('') || '-'; return td; } },
+            { render: (r) => { const td = dom.create('div'); td.style.whiteSpace = 'pre-wrap'; td.innerHTML = (r.liveHtmls || []).join('<span class="zhibofenge">|</span>') || '-'; return td; } },
         ]);
     }
 
@@ -724,7 +724,11 @@
                 if (parsed.leftTeam && parsed.rightTeam) {
                     const popoMatch = popoMatchLives.find(m =>
                         (m.leftTeam === parsed.leftTeam && m.rightTeam === parsed.rightTeam) ||
-                        (m.leftTeam === parsed.rightTeam && m.rightTeam === parsed.leftTeam)
+                        (m.leftTeam === parsed.rightTeam && m.rightTeam === parsed.leftTeam) ||
+                        (m.leftTeam.includes(parsed.leftTeam) && m.rightTeam.includes(parsed.rightTeam)) ||
+                        (m.leftTeam.includes(parsed.rightTeam) && m.rightTeam.includes(parsed.leftTeam)) ||
+                        (parsed.leftTeam.includes(m.leftTeam) && parsed.rightTeam.includes(m.rightTeam)) ||
+                        (parsed.leftTeam.includes(m.rightTeam) && parsed.rightTeam.includes(m.leftTeam))
                     );
                     if (popoMatch) {
                         parsed.liveHtmls = popoMatch.liveLinks.concat(parsed.liveHtmls);
@@ -1323,6 +1327,7 @@ footer { margin: 24px 0; color: var(--muted); text-align: center; font-size: 14p
     font-weight: 600;
   }
   .table a:visited { color: #BC62C2; }
+  .table span.zhibofenge { margin-right: 12px;}
   /* 小屏适配：略微缩小，避免换行过多 */
   @media (max-width: 640px) {
     .table {
