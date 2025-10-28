@@ -1425,24 +1425,32 @@ footer { margin: 24px 0; color: var(--muted); text-align: center; font-size: 14p
         <div class="side-title">联赛与杯赛</div>
         <button class="standing-side-item active" type="button" data-key="epl"
           data-url="https://data.zhibo8.cc/html/match.html?match=英超&saishi=24">英超</button>
-        <button class="standing-side-item" type="button" data-key="facup"
+        <button class="standing-side-item" type="button" data-key="efacup"
           data-url="https://data.zhibo8.cc/html/match.html?match=足总杯&saishi=21">英足总杯</button>
-        <button class="standing-side-item" type="button" data-key="facup"
+        <button class="standing-side-item" type="button" data-key="eflcup"
           data-url="https://data.zhibo8.cc/html/match.html?match=英格兰联赛杯&saishi=221">英联赛杯</button>
-        <button class="standing-side-item" type="button" data-key="facup"
+        <button class="standing-side-item" type="button" data-key="eurochampions"
           data-url="https://data.zhibo8.cc/html/match.html?match=欧冠&saishi=371">欧冠</button>
-        <button class="standing-side-item" type="button" data-key="facup"
+        <button class="standing-side-item" type="button" data-key="europa"
           data-url="https://data.zhibo8.cc/html/match.html?match=欧联杯&saishi=369">欧联</button>
-        <button class="standing-side-item" type="button" data-key="facup"
+        <button class="standing-side-item" type="button" data-key="eurocoop"
           data-url="https://data.zhibo8.cc/html/match.html?match=欧协联&saishi=3002">欧协联</button>
-        <button class="standing-side-item" type="button" data-key="facup"
+        <button class="standing-side-item" type="button" data-key="eurosupercup"
           data-url="https://data.zhibo8.cc/html/match.html?match=欧洲超级杯&saishi=370">欧超杯</button>
-        <button class="standing-side-item" type="button" data-key="facup"
+        <button class="standing-side-item" type="button" data-key="worldclubcup"
           data-url="https://data.zhibo8.cc/html/match.html?match=世俱杯&saishi=7">世俱杯</button>
-        <button class="standing-side-item" type="button" data-key="facup"
+        <button class="standing-side-item" type="button" data-key="eurocup"
           data-url="https://data.zhibo8.cc/html/match.html?match=欧洲杯&saishi=372">欧洲杯</button>
-        <button class="standing-side-item" type="button" data-key="facup"
+        <button class="standing-side-item" type="button" data-key="worldcup"
           data-url="https://data.zhibo8.cc/html/match.html?match=世界杯&saishi=4">世界杯</button>
+        <button class="standing-side-item" type="button" data-key="zhcs"
+          data-url="https://data.zhibo8.cc/html/match.html?match=中超&saishi=353">中超</button>
+        <button class="standing-side-item" type="button" data-key="zhfacup"
+          data-url="https://data.zhibo8.cc/html/match.html?match=足协杯&saishi=352">中国足协杯</button>
+        <button class="standing-side-item" type="button" data-key="zhfasupercup"
+          data-url="https://data.zhibo8.cc/html/match.html?match=足协超级杯&saishi=354">中国足协超级杯</button>
+        <button class="standing-side-item" type="button" data-key="asiacup"
+          data-url="https://data.zhibo8.cc/html/match.html?match=亚洲杯&saishi=391">亚洲杯</button>
       </nav>
       <div class="standing-content">
         <div class="standing-iframe-wrap"></div>
