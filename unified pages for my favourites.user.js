@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         unified pages for my favourites
 // @namespace    https://rubinbaby.github.io/userscripts
-// @version      0.1.0
+// @version      0.1.1
 // @description  清空目标网页并显示自己常用的网页（首页/体育/新闻/天气/关于）
 // @author       yinxiao
 // @match        https://news.zhibo8.com/zuqiu/
@@ -1159,6 +1159,7 @@
 
         const style = dom.create('style');
         style.textContent = `
+/* Variables */
 :root {
   --bg: #f7f9fc;
   --card: #ffffff;
@@ -1168,6 +1169,16 @@
   --primary-ghost: rgba(37, 99, 235, 0.15);
   --border: #e5e7eb;
   --hover: #f3f4f6;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --space-1: 6px;
+  --space-2: 8px;
+  --space-3: 10px;
+  --space-4: 12px;
+  --space-5: 16px;
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
+  --shadow-md: 0 2px 6px rgba(0, 0, 0, 0.12);
   --bp-sm: 480px;
   --bp-md: 768px;
   --bp-lg: 1024px;
@@ -1187,8 +1198,11 @@
   --primary-ghost: rgba(79, 140, 255, 0.15);
   --border: #243043;
   --hover: #182033;
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.5);
+  --shadow-md: 0 2px 6px rgba(0, 0, 0, 0.6);
 }
 
+/* Global */
 * {
   box-sizing: border-box;
 }
@@ -1208,6 +1222,25 @@ a {
   text-decoration: none;
 }
 
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: var(--radius-sm);
+}
+
+:root[data-theme="dark"] *::-webkit-scrollbar-thumb {
+  background: #334155;
+}
+
+/* Container */
 .container {
   width: 100%;
   margin-inline: auto;
@@ -1269,26 +1302,28 @@ a {
   }
 }
 
+/* Nav */
 .nav {
   display: flex;
-  gap: 12px;
+  gap: var(--space-5);
   flex-wrap: wrap;
   background: var(--card);
   border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 12px;
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
   position: sticky;
   top: 0;
   z-index: 10;
   backdrop-filter: saturate(1.2) blur(6px);
+  box-shadow: var(--shadow-sm);
 }
 
 .tab {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 14px;
-  border-radius: 10px;
+  gap: var(--space-4);
+  padding: var(--space-4) 14px;
+  border-radius: var(--radius-sm);
   border: 1px solid var(--border);
   background: transparent;
   color: var(--text);
@@ -1319,23 +1354,24 @@ a {
   color: var(--muted);
 }
 
+/* Subnav */
 .subnav {
   display: flex;
-  gap: 10px;
+  gap: var(--space-4);
   flex-wrap: wrap;
-  margin-top: 12px;
+  margin-top: var(--space-4);
   background: var(--card);
   border: 1px dashed var(--border);
-  border-radius: 10px;
-  padding: 8px;
+  border-radius: var(--radius-sm);
+  padding: var(--space-2);
 }
 
 .subtab {
-  padding: 8px 12px;
-  border-radius: 8px;
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-sm);
   border: 1px solid var(--border);
   color: var(--text);
-  transition: all 0.15s ease;
+  transition: background 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
 }
 
 .subtab:hover {
@@ -1348,34 +1384,37 @@ a {
   background: linear-gradient(180deg, rgba(79, 140, 255, 0.16), transparent 60%);
 }
 
+/* Cards */
 .card {
   background: var(--card);
   border: 1px solid var(--border);
-  border-radius: 16px;
-  padding: 20px;
-  margin-top: 16px;
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+  margin-top: var(--space-5);
+  box-shadow: var(--shadow-sm);
 }
 
 .card h1 {
-  margin: 0 0 8px;
+  margin: 0 0 var(--space-3);
   font-size: 24px;
 }
 
 .card h2 {
-  margin: 0 0 8px;
+  margin: 0 0 var(--space-3);
   font-size: 20px;
 }
 
 .card p {
-  margin: 8px 0;
+  margin: var(--space-3) 0;
   color: var(--muted);
 }
 
+/* Grid */
 .grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 16px;
-  margin-top: 16px;
+  gap: var(--space-5);
+  margin-top: var(--space-5);
 }
 
 @media (max-width: 640px) {
@@ -1384,6 +1423,7 @@ a {
   }
 }
 
+/* Footer */
 footer {
   margin: 24px 0;
   color: var(--muted);
@@ -1391,41 +1431,52 @@ footer {
   font-size: 14px;
 }
 
+/* Lists & tags */
 .hero,
 .list {
   display: grid;
-  gap: 12px;
+  gap: var(--space-4);
 }
 
 .list {
-  gap: 10px;
+  gap: var(--space-3);
 }
 
 .tag {
   display: inline-block;
-  padding: 2px 8px;
+  padding: var(--space-1) var(--space-3);
   border: 1px dashed var(--border);
   border-radius: 999px;
   color: var(--muted);
   font-size: 12px;
 }
 
+/* Section / state */
 .section {
-  margin-top: 16px;
+  margin-top: var(--space-5);
 }
 
+.hidden {
+  display: none;
+}
+
+.section.active .title {
+  color: var(--primary);
+}
+
+/* Table */
 .table {
   width: 100%;
   border-collapse: collapse;
-  margin-top: 8px;
+  margin-top: var(--space-2);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   overflow: hidden;
 }
 
 .table th,
 .table td {
-  padding: 10px 12px;
+  padding: var(--space-3) var(--space-4);
   border-bottom: 1px solid var(--border);
   text-align: left;
 }
@@ -1433,6 +1484,7 @@ footer {
 .table th {
   background: rgba(255, 255, 255, 0.05);
   color: var(--text);
+  font-weight: 600;
 }
 
 .table tr:nth-child(even) td {
@@ -1445,26 +1497,50 @@ footer {
   vertical-align: middle;
 }
 
-.hidden {
-  display: none;
+.table a:visited {
+  color: #BC62C2;
 }
 
-.section.active .title {
-  color: var(--primary);
+@media (max-width: 640px) {
+  .table {
+    font-size: 15px;
+    line-height: 1.55;
+  }
+
+  .table th {
+    font-size: 15px;
+  }
 }
 
+#section-schedule,
+#section-news {
+ .table{
+    zoom: 1.5;
+  }
+}
+
+#section-schedule .table a {
+  margin-right: var(--space-4);
+}
+
+.table .zhibofenge {
+  display: inline-block;
+  margin: 0 var(--space-4);
+}
+
+/* Filter bar */
 .filter-bar {
   display: grid;
   grid-template-columns: 1fr auto;
-  gap: 8px;
+  gap: var(--space-2);
   align-items: center;
-  margin: 10px 0 6px;
+  margin: var(--space-3) 0 var(--space-2);
 }
 
 #schedule-filter-input,
 #news-filter-input {
-  padding: 8px 10px;
-  border-radius: 8px;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
   border: 1px solid var(--border);
   background: transparent;
   color: var(--text);
@@ -1477,8 +1553,8 @@ footer {
 
 #schedule-filter-add,
 #news-filter-add {
-  padding: 8px 12px;
-  border-radius: 8px;
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-sm);
   border: 1px solid var(--border);
   background: transparent;
   color: var(--text);
@@ -1488,8 +1564,8 @@ footer {
 .filter-tags {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 8px;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
 }
 
 .filter-hint {
@@ -1499,8 +1575,8 @@ footer {
 .filter-chip {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 4px 8px;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
   border: 1px dashed var(--border);
   border-radius: 999px;
   font-size: 12px;
@@ -1514,33 +1590,35 @@ footer {
 }
 
 .filter-clear {
-  margin-left: 8px;
-  padding: 4px 8px;
+  margin-left: var(--space-2);
+  padding: var(--space-2) var(--space-3);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: transparent;
   color: var(--text);
   cursor: pointer;
   font-size: 12px;
 }
 
+/* Side layout */
 .standing-layout,
 .weather-layout {
   display: grid;
   grid-template-columns: 220px 1fr;
-  gap: 16px;
-  margin-top: 12px;
+  gap: var(--space-5);
+  margin-top: var(--space-4);
 }
 
 .standing-side,
 .weather-side {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--space-3);
   background: var(--card);
   border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 10px;
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  box-shadow: var(--shadow-sm);
 }
 
 .standing-side {
@@ -1551,14 +1629,14 @@ footer {
 .side-title {
   font-weight: 600;
   color: var(--muted);
-  margin-bottom: 6px;
+  margin-bottom: var(--space-2);
 }
 
 .standing-side-item,
 .weather-side-item {
   text-align: left;
-  padding: 8px 10px;
-  border-radius: 8px;
+  padding: var(--space-3) var(--space-3);
+  border-radius: var(--radius-sm);
   border: 1px solid var(--border);
   background: transparent;
   color: var(--text);
@@ -1582,15 +1660,17 @@ footer {
 .weather-content {
   background: var(--card);
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   padding: 0;
   overflow: hidden;
+  box-shadow: var(--shadow-sm);
 }
 
 .standing-content {
   display: flex;
 }
 
+/* Content flex wrappers */
 #sports.card,
 #section-match-live.section,
 .sports-match-live-content,
@@ -1615,6 +1695,7 @@ footer {
   display: none;
 }
 
+/* Iframe wrappers */
 .sports-match-live-iframe-wrap,
 .standing-iframe-wrap,
 .global-news-iframe-wrap,
@@ -1622,7 +1703,7 @@ footer {
   width: 100%;
   background: #fff;
   overflow: hidden;
-  border-radius: 12px;
+  border-radius: var(--radius-md);
 }
 
 .sports-match-live-iframe-wrap iframe,
@@ -1636,27 +1717,32 @@ footer {
   background: #fff;
 }
 
-#section-schedule .table a {
-  margin-right: 12px;
-}
-
-/* 热门视频 / 热门新闻样式 */
+/* Hot sections */
 .hot-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 12px;
-  margin: 10px 0 8px;
+  gap: var(--space-4);
+  margin: var(--space-3) 0 var(--space-2);
+}
+
+@media (max-width: 768px) {
+
+  .standing-layout,
+  .hot-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .hot-card {
   background: var(--card);
   border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 12px;
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  box-shadow: var(--shadow-sm);
 }
 
 .hot-title {
-  margin: 0 0 8px;
+  margin: 0 0 var(--space-3);
   font-size: 16px;
   color: var(--text);
 }
@@ -1666,7 +1752,7 @@ footer {
   margin: 0;
   padding: 0;
   display: grid;
-  gap: 8px;
+  gap: var(--space-3);
 }
 
 #sports-hot-videos,
@@ -1677,31 +1763,20 @@ footer {
 #sports-hot-videos .hot-list {
   display: flex;
   flex-wrap: wrap;
+  gap: var(--space-4);
 }
 
 #sports-hot-videos .list-item {
   display: block;
-  width: 112px
-}
-
-#sports-hot-videos .list-item:not( :nth-child(3n+3)) {
-  margin-right: 12px
-}
-
-#sports-hot-videos .list-item:nth-child(n+4) {
-  margin-top: 12px
-}
-
-#sports-hot-videos .list-item:hover ._title {
-  color: #0082ff
+  width: 128px;
 }
 
 #sports-hot-videos .thumb-box {
-  width: 112px;
-  height: 80px;
-  border-radius: 4px;
+  width: 128px;
+  height: 88px;
+  border-radius: var(--radius-sm);
   background-color: #eee;
-  overflow: hidden
+  overflow: hidden;
 }
 
 #sports-hot-videos .thumb-box img {
@@ -1715,26 +1790,30 @@ footer {
 }
 
 #sports-hot-videos .list-item:hover .thumb-box img {
-  transform: scale(1.1)
+  transform: scale(1.1);
 }
 
 #sports-hot-videos .list-item ._title {
   margin-top: 10px;
   height: 36px;
   line-height: 18px;
-  font-size: 14px;
+  font-size: 15px;
   overflow: hidden;
   text-overflow: ellipsis;
   display: -webkit-box;
   -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2
+  -webkit-line-clamp: 2;
+}
+
+#sports-hot-videos .list-item:hover ._title {
+  color: var(--primary);
 }
 
 #sports-hot-news .list-item {
   display: block;
   height: 20px;
   line-height: 20px;
-  font-size: 14px;
+  font-size: 15px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1744,50 +1823,29 @@ footer {
   color: #BC62C2;
 }
 
-@media (max-width: 768px) {
+/* Theme switch container */
+.theme-switch {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--card);
+  box-shadow: var(--shadow-md);
+  padding: var(--space-2) var(--space-3);
+}
 
-  .standing-layout,
-  .hot-grid {
-    grid-template-columns: 1fr;
-  }
+.theme-switch button {
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.theme-switch button:hover {
+  background: var(--hover);
 }
     `;
         document.head.appendChild(style);
-
-        if (!document.getElementById('larger-table-style')) {
-            const largerTableStyle = dom.create('style', { id: 'larger-table-style' });
-            largerTableStyle.textContent = `
-/* 全局表格字体放大 */
-.table {
-  zoom: 1.5;
-}
-
-.table th {
-  font-weight: 600;
-}
-
-.table a:visited {
-  color: #BC62C2;
-}
-
-.table span.zhibofenge {
-  margin-right: 12px;
-}
-
-/* 小屏适配：略微缩小，避免换行过多 */
-@media (max-width: 640px) {
-  .table {
-    font-size: 14px;
-    line-height: 1.55;
-  }
-
-  .table th {
-    font-size: 14px;
-  }
-}
-`;
-            document.head.appendChild(largerTableStyle);
-        }
 
         const root = dom.create('div', { className: 'container flex' });
         root.innerHTML = `
