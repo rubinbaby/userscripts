@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         unified pages for my favourites
 // @namespace    https://rubinbaby.github.io/userscripts
-// @version      0.1.1
+// @version      0.1.2
 // @description  清空目标网页并显示自己常用的网页（首页/体育/新闻/天气/关于）
 // @author       yinxiao
 // @match        https://news.zhibo8.com/zuqiu/
@@ -772,7 +772,8 @@
                         (m.leftTeam.includes(parsed.leftTeam) && m.rightTeam.includes(parsed.rightTeam)) ||
                         (m.leftTeam.includes(parsed.rightTeam) && m.rightTeam.includes(parsed.leftTeam)) ||
                         (parsed.leftTeam.includes(m.leftTeam) && parsed.rightTeam.includes(m.rightTeam)) ||
-                        (parsed.leftTeam.includes(m.rightTeam) && parsed.rightTeam.includes(m.leftTeam))
+                        (parsed.leftTeam.includes(m.rightTeam) && parsed.rightTeam.includes(m.leftTeam)) ||
+                        (parsed.time && m.time && (date + " " + parsed.time).includes(m.time) && (m.leftTeam.includes(parsed.leftTeam) || m.rightTeam.includes(parsed.leftTeam) || m.leftTeam.includes(parsed.rightTeam) || m.rightTeam.includes(parsed.rightTeam)))
                     );
                     if (popoMatch) {
                         parsed.liveHtmls = popoMatch.liveLinks.concat(parsed.liveHtmls);
@@ -1517,10 +1518,6 @@ footer {
  .table{
     zoom: 1.5;
   }
-}
-
-#section-schedule .table a {
-  margin-right: var(--space-4);
 }
 
 .table .zhibofenge {
