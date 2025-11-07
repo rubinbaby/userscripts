@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         unified pages for my favourites
 // @namespace    https://rubinbaby.github.io/userscripts
-// @version      0.1.2
+// @version      0.1.3
 // @description  清空目标网页并显示自己常用的网页（首页/体育/新闻/天气/关于）
 // @author       yinxiao
 // @match        https://news.zhibo8.com/zuqiu/
@@ -31,7 +31,7 @@
 
     const ROUTE = {
         DEFAULT_HASH: '#sports-news',
-        VALID: new Set(['home', 'sports-schedule', 'sports-news', 'sports-match-live', 'sports-standing', 'global-news', 'weather', 'about']),
+        VALID: new Set(['home', 'sports-schedule', 'sports-news', 'sports-match-live', 'sports-standing', 'global-news', 'weather', 'map', 'about']),
     };
 
     const URLS = {
@@ -46,6 +46,7 @@
             `https://api.qiumibao.com/application/saishi/index.php?_url=/getMatchByDate&date=${encodeURIComponent(dateStr)}&index_v2=1&_env=pc&_platform=pc`,
         POPO_ZHIBO: 'http://www.popozhibo.cc',
         ZHIBO8_BASE: 'https://www.zhibo8.com',
+        MAP_DEFAULT: 'https://ditu.gaode.com/',
     };
 
     const THEME = {
@@ -1035,6 +1036,7 @@
         if (name !== 'sports-match-live') destroyIframe('#sports-match-live-iframe');
         if (name !== 'global-news') destroyIframe('#global-news-iframe');
         if (name !== 'weather') destroyIframe('#weather-iframe');
+        if (name !== 'map') destroyIframe('#map-iframe');
 
         if (name === 'sports-schedule') {
             setupScheduleFilter();
@@ -1092,6 +1094,24 @@
                     src: url,
                 });
             });
+        } else if (name === 'map') {
+            const first = dom.qs('section#map .map-side-item.active') || dom.qs('section#map .map-side-item');
+            const src = first ? (first.dataset.url || URLS.MAP_DEFAULT) : URLS.MAP_DEFAULT;
+            ensureIframe({
+                wrapSelector: 'section#map .map-iframe-wrap',
+                iframeId: 'map-iframe',
+                title: '地图',
+                src,
+            });
+            bindSideMenu('section#map .subnav', '.map-side-item', (btn) => {
+                const url = btn.dataset.url || URLS.MAP_DEFAULT;
+                ensureIframe({
+                    wrapSelector: 'section#map .map-iframe-wrap',
+                    iframeId: 'map-iframe',
+                    title: '地图',
+                    src: url,
+                });
+            });
         }
     }
 
@@ -1111,6 +1131,8 @@
                 location.hash = '#sports-news';
             } else if (key === 'weather') {
                 location.hash = '#weather';
+            } else if (key === 'map') {
+                location.hash = '#map';
             } else if (key === 'about') {
                 location.hash = '#about';
             }
@@ -1599,7 +1621,8 @@ footer {
 
 /* Side layout */
 .standing-layout,
-.weather-layout {
+.weather-layout,
+.map-layout {
   display: grid;
   grid-template-columns: 220px 1fr;
   gap: var(--space-5);
@@ -1607,7 +1630,8 @@ footer {
 }
 
 .standing-side,
-.weather-side {
+.weather-side,
+.map-side {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
@@ -1630,7 +1654,8 @@ footer {
 }
 
 .standing-side-item,
-.weather-side-item {
+.weather-side-item,
+.map-side-item {
   text-align: left;
   padding: var(--space-3) var(--space-3);
   border-radius: var(--radius-sm);
@@ -1642,19 +1667,22 @@ footer {
 }
 
 .standing-side-item:hover,
-.weather-side-item:hover {
+.weather-side-item:hover,
+.map-side-item:hover {
   background: var(--hover);
 }
 
 .standing-side-item.active,
-.weather-side-item.active {
+.weather-side-item.active,
+.map-side-item.active {
   border-color: var(--primary);
   box-shadow: 0 0 0 3px var(--primary-ghost);
   background: linear-gradient(180deg, rgba(79, 140, 255, 0.16), transparent 60%);
 }
 
 .standing-content,
-.weather-content {
+.weather-content,
+.map-content {
   background: var(--card);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
@@ -1674,21 +1702,25 @@ footer {
 #global-news.card,
 .global-news-content,
 #weather.card,
-.weather-content {
+.weather-content,
+#map.card,
+.map-content {
   flex: 1 1 auto;
   overflow: auto;
   display: flex;
 }
 
 #sports.card,
-#weather.card {
+#weather.card,
+#map.card {
   flex-direction: column;
 }
 
 #sports.card.hidden,
 #section-match-live.section.hidden,
 #global-news.card.hidden,
-#weather.card.hidden {
+#weather.card.hidden,
+#map.card.hidden {
   display: none;
 }
 
@@ -1696,7 +1728,8 @@ footer {
 .sports-match-live-iframe-wrap,
 .standing-iframe-wrap,
 .global-news-iframe-wrap,
-.weather-iframe-wrap {
+.weather-iframe-wrap,
+.map-iframe-wrap {
   width: 100%;
   background: #fff;
   overflow: hidden;
@@ -1706,7 +1739,8 @@ footer {
 .sports-match-live-iframe-wrap iframe,
 .standing-iframe-wrap iframe,
 .global-news-iframe-wrap iframe,
-.weather-iframe-wrap iframe {
+.weather-iframe-wrap iframe,
+.map-iframe-wrap iframe {
   display: block;
   width: 100%;
   height: 100%;
@@ -1851,6 +1885,7 @@ footer {
   <a class="tab" href="#" data-tab="sports"><span class="emoji">🏟️</span> 体育</a>
   <a class="tab" href="#" data-tab="global-news"><span class="emoji">📰</span> 新闻</a>
   <a class="tab" href="#" data-tab="weather"><span class="emoji">🌤️</span> 天气</a>
+  <a class="tab" href="#" data-tab="map"><span class="emoji">🧭</span> 地图</a>
   <a class="tab" href="#" data-tab="about"><span class="emoji">ℹ️</span> 关于</a>
   <span class="spacer"></span>
   <span class="brand"></span>
@@ -1990,6 +2025,20 @@ footer {
   </div>
   <div class="weather-content">
     <div class="weather-iframe-wrap"></div>
+  </div>
+</section>
+
+<section id="map" class="card">
+  <div class="subnav" aria-label="地图子菜单">
+    <button class="map-side-item active" type="button" data-key="gaode-map"
+      data-url="https://ditu.gaode.com">高德地图</button>
+    <button class="map-side-item" type="button" data-key="baidu-map"
+      data-url="https://map.baidu.com">百度地图</button>
+    <button class="map-side-item" type="button" data-key="google-map"
+      data-url="https://www.google.com/maps/embed?pb=!1m14!1m12!1m3!1d3422.4381754634496!2d121.46861479198516!3d30.930324531088253!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!5e0!3m2!1sen!2s!4v1762488253168!5m2!1sen!2s">Google地图</button>
+  </div>
+  <div class="map-content">
+    <div class="map-iframe-wrap"></div>
   </div>
 </section>
 
