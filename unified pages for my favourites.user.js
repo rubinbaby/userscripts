@@ -1,16 +1,17 @@
 // ==UserScript==
 // @name         unified pages for my favourites
 // @namespace    https://rubinbaby.github.io/userscripts
-// @version      0.1.3
+// @version      0.1.4
 // @description  清空目标网页并显示自己常用的网页（首页/体育/新闻/天气/关于）
 // @author       yinxiao
-// @match        https://news.zhibo8.com/zuqiu/
+// @match        https://zq.titan007.com/info/index_cn.htm
 // @run-at       document-start
 // @updateURL    https://github.com/rubinbaby/userscripts/blob/main/unified%20pages%20for%20my%20favourites.user.js
 // @downloadURL  https://github.com/rubinbaby/userscripts/blob/main/unified%20pages%20for%20my%20favourites.user.js
 // @grant        GM.xmlHttpRequest
 // @connect      www.nmc.cn
 // @connect      www.zhibo8.com
+// @connect      news.zhibo8.com
 // @connect      api.qiumibao.com
 // @connect      www.popozhibo.cc
 // ==/UserScript==
@@ -38,7 +39,7 @@
         SPORTS_NEWS_API: (date) => `https://news.zhibo8.com/zuqiu/json/${date}.htm`,
         SPORTS_VIDEOS_API: (date) => `https://www.zhibo8.com/zuqiu/json/${date}.htm`,
         SPORTS_MATCH_LIVE_DEFAULT: 'https://www.188bifen.com/',
-        STANDING_DEFAULT: 'https://data.zhibo8.cc/html/match.html?match=英超&saishi=24',
+        STANDING_DEFAULT: 'https://zq.titan007.com/cn/League/36.html',
         GLOBAL_NEWS_DEFAULT: 'https://www.kankanews.com/k24',
         WEATHER_DEFAULT: 'https://www.nmc.cn/publish/forecast/ASH/fengxian.html',
         NMC_API: 'https://www.nmc.cn/rest/weather?stationid=BOoen',
@@ -1973,33 +1974,35 @@ footer {
       <nav class="standing-side" aria-label="积分排名第三级菜单">
         <div class="side-title">联赛与杯赛</div>
         <button class="standing-side-item active" type="button" data-key="epl"
-          data-url="https://data.zhibo8.cc/html/match.html?match=英超&saishi=24">英超</button>
+          data-url="https://zq.titan007.com/cn/League/36.html">英超</button>
         <button class="standing-side-item" type="button" data-key="efacup"
-          data-url="https://data.zhibo8.cc/html/match.html?match=足总杯&saishi=21">英足总杯</button>
+          data-url="https://zq.titan007.com/cn/CupMatch/90.html">英足总杯</button>
         <button class="standing-side-item" type="button" data-key="eflcup"
-          data-url="https://data.zhibo8.cc/html/match.html?match=英格兰联赛杯&saishi=221">英联赛杯</button>
+          data-url="https://zq.titan007.com/cn/CupMatch/84.html">英联赛杯</button>
         <button class="standing-side-item" type="button" data-key="eurochampions"
-          data-url="https://data.zhibo8.cc/html/match.html?match=欧冠&saishi=371">欧冠</button>
+          data-url="https://zq.titan007.com/cn/CupMatch/103.html">欧冠</button>
         <button class="standing-side-item" type="button" data-key="europa"
-          data-url="https://data.zhibo8.cc/html/match.html?match=欧联杯&saishi=369">欧联</button>
+          data-url="https://zq.titan007.com/cn/CupMatch/113.html">欧联</button>
         <button class="standing-side-item" type="button" data-key="eurocoop"
-          data-url="https://data.zhibo8.cc/html/match.html?match=欧协联&saishi=3002">欧协联</button>
+          data-url="https://zq.titan007.com/cn/CupMatch/2187.html">欧协联</button>
         <button class="standing-side-item" type="button" data-key="eurosupercup"
-          data-url="https://data.zhibo8.cc/html/match.html?match=欧洲超级杯&saishi=370">欧超杯</button>
+          data-url="https://zq.titan007.com/cn/CupMatch/109.html">欧超杯</button>
         <button class="standing-side-item" type="button" data-key="worldclubcup"
-          data-url="https://data.zhibo8.cc/html/match.html?match=世俱杯&saishi=7">世俱杯</button>
+          data-url="https://zq.titan007.com/cn/CupMatch/304.html">世俱杯</button>
         <button class="standing-side-item" type="button" data-key="eurocup"
-          data-url="https://data.zhibo8.cc/html/match.html?match=欧洲杯&saishi=372">欧洲杯</button>
+          data-url="https://zq.titan007.com/cn/CupMatch/67.html">欧洲杯</button>
         <button class="standing-side-item" type="button" data-key="worldcup"
-          data-url="https://data.zhibo8.cc/html/match.html?match=世界杯&saishi=4">世界杯</button>
+          data-url="https://zq.titan007.com/cn/CupMatch/75.html">世界杯</button>
         <button class="standing-side-item" type="button" data-key="zhcs"
-          data-url="https://data.zhibo8.cc/html/match.html?match=中超&saishi=353">中超</button>
+          data-url="https://zq.titan007.com/cn/SubLeague/60.html">中超</button>
         <button class="standing-side-item" type="button" data-key="zhfacup"
-          data-url="https://data.zhibo8.cc/html/match.html?match=足协杯&saishi=352">中国足协杯</button>
+          data-url="https://zq.titan007.com/cn/CupMatch/87.html">中国足协杯</button>
         <button class="standing-side-item" type="button" data-key="zhfasupercup"
-          data-url="https://data.zhibo8.cc/html/match.html?match=足协超级杯&saishi=354">中国足协超级杯</button>
+          data-url="https://zq.titan007.com/cn/CupMatch/86.html">中国足协超级杯</button>
+        <button class="standing-side-item" type="button" data-key="afcchampions"
+          data-url="https://zq.titan007.com/cn/CupMatch/192.html">亚冠</button>
         <button class="standing-side-item" type="button" data-key="asiacup"
-          data-url="https://data.zhibo8.cc/html/match.html?match=亚洲杯&saishi=391">亚洲杯</button>
+          data-url="https://zq.titan007.com/cn/CupMatch/95.html">亚洲杯</button>
       </nav>
       <div class="standing-content">
         <div class="standing-iframe-wrap"></div>
