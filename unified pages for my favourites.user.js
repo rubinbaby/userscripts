@@ -14,6 +14,8 @@
 // @connect      news.zhibo8.com
 // @connect      api.qiumibao.com
 // @connect      www.popozhibo.cc
+// @connect      tu.duoduocdn.com
+// @connect      duihui.duoduocdn.com
 // ==/UserScript==
 
 (function () {
@@ -145,6 +147,35 @@
                 onerror: (err) => reject(err || new Error('Network error')),
             });
         });
+    }
+
+    function fetchAsBlob(url, referer) {
+        return new Promise((resolve, reject) => {
+            GM.xmlHttpRequest({
+                method: 'GET',
+                url,
+                headers: referer ? { 'Referer': referer } : {},
+                responseType: 'blob',
+                onload: res => {
+                    if (res.status >= 200 && res.status < 300) resolve(res.response);
+                    else reject(new Error(`HTTP ${res.status}`));
+                },
+                onerror: err => reject(err)
+            });
+        });
+    }
+
+    async function replaceImg(img) {
+        const src = img.getAttribute('data-original') || img.src; // 适配懒加载
+        if (!src) return;
+        try {
+            const blob = await fetchAsBlob(src, URLS.ZHIBO8_BASE);
+            const url = URL.createObjectURL(blob);
+            img.src = url;
+            img.removeAttribute('srcset'); // 避免浏览器再次触发原始加载
+        } catch (e) {
+            warn('Replace image failed:', src, e);
+        }
     }
 
     // -------------------------------
@@ -443,7 +474,7 @@
                     return await perDateFetch(d);
                 } catch (e) {
                     // 每个单日请求错误单独吞掉，返回空的占位结构（由调用方决定如何处理）
-                    console.warn('batchFetchByDates: perDateFetch error for', d, e);
+                    warn('batchFetchByDates: perDateFetch error for', d, e);
                     return null;
                 }
             })());
@@ -479,7 +510,7 @@
             const btn = e.target.closest(itemSelector);
             if (!btn) return;
             dom.qsa(itemSelector, menu).forEach((el) => el.classList.toggle('active', el === btn));
-            try { onSelect(btn); } catch (err) { console.warn(err); }
+            try { onSelect(btn); } catch (err) { warn(err); }
         });
     }
 
@@ -806,6 +837,7 @@
         // Apply current tags then render
         const filtered = filterRowsByTags(SCHEDULE_ROWS, Array.from(SCHEDULE_ACTIVE_TAGS));
         renderScheduleTable(tbody, filtered);
+        document.querySelectorAll('img').forEach(replaceImg);
         s.setText('');
         s.clear();
     }
@@ -1000,6 +1032,7 @@
 
         const filtered = filterRowsByTags(SPORTS_NEWS_ROWS, Array.from(SPORTS_NEWS_ACTIVE_TAGS));
         renderNewsTable(tbody, filtered);
+        document.querySelectorAll('img').forEach(replaceImg);
         s.setText('');
         s.clear();
     }
