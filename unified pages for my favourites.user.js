@@ -740,6 +740,7 @@
             { render: (r) => { const td = dom.create('div'); td.style.whiteSpace = 'pre-wrap'; td.innerHTML = r.matchupHtml || '-'; return td; } },
             { render: (r) => { const td = dom.create('div'); td.style.whiteSpace = 'pre-wrap'; td.innerHTML = (r.liveHtmls || []).join('<span class="zhibofenge">|</span>') || '-'; return td; } },
         ]);
+        document.querySelectorAll('img').forEach(replaceImg);
     }
 
     function setupScheduleFilter() {
@@ -837,7 +838,6 @@
         // Apply current tags then render
         const filtered = filterRowsByTags(SCHEDULE_ROWS, Array.from(SCHEDULE_ACTIVE_TAGS));
         renderScheduleTable(tbody, filtered);
-        document.querySelectorAll('img').forEach(replaceImg);
         s.setText('');
         s.clear();
     }
@@ -881,6 +881,7 @@
                 }
             },
         ]);
+        document.querySelectorAll('img').forEach(replaceImg);
     }
 
     /**
@@ -1032,7 +1033,6 @@
 
         const filtered = filterRowsByTags(SPORTS_NEWS_ROWS, Array.from(SPORTS_NEWS_ACTIVE_TAGS));
         renderNewsTable(tbody, filtered);
-        document.querySelectorAll('img').forEach(replaceImg);
         s.setText('');
         s.clear();
     }
