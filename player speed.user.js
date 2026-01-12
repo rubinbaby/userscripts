@@ -5,7 +5,7 @@
 // @match        https://www.bilibili.com/*
 // @match        file:///Users/*
 // @author       yinxiao
-// @version      0.1.8
+// @version      0.1.9
 // @updateURL    https://github.com/rubinbaby/userscripts/blob/main/player%20speed.user.js
 // @downloadURL  https://github.com/rubinbaby/userscripts/blob/main/player%20speed.user.js
 // ==/UserScript==
@@ -67,7 +67,8 @@
             // Cinema mode
             document.querySelectorAll(".ytp-size-button.ytp-button").forEach(btn => {
                 const tooltip = btn.getAttribute('data-tooltip-title');
-                if (tooltip && stringContains(tooltip, "Cinema mode")) btn.click();
+                if (tooltip && (stringContains(tooltip, "Cinema mode") || stringContains(tooltip, "Theater mode")))
+                    btn.click();
             });
             // Close chat
             document.querySelectorAll("#close-button > yt-button-renderer button").forEach(btn => btn.click());
