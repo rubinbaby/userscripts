@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         unified pages for my favourites
 // @namespace    https://rubinbaby.github.io/userscripts
-// @version      0.1.4
+// @version      0.1.5
 // @description  清空目标网页并显示自己常用的网页（首页/体育/新闻/天气/关于）
 // @author       yinxiao
 // @match        https://zq.titan007.com/info/index_cn.htm
@@ -47,7 +47,7 @@
         NMC_API: 'https://www.nmc.cn/rest/weather?stationid=BOoen',
         MATCH_API: (dateStr) =>
             `https://api.qiumibao.com/application/saishi/index.php?_url=/getMatchByDate&date=${encodeURIComponent(dateStr)}&index_v2=1&_env=pc&_platform=pc`,
-        POPO_ZHIBO: 'http://www.popozhibo.cc',
+        POPO_ZHIBO: 'https://www.popozhibo.cc',
         ZHIBO8_BASE: 'https://www.zhibo8.com',
         MAP_DEFAULT: 'https://ditu.gaode.com/',
     };
@@ -1554,7 +1554,8 @@ footer {
   vertical-align: middle;
 }
 
-.table a:visited {
+.table a:visited,
+.hot-list a:visited {
   color: #BC62C2;
 }
 
@@ -1884,10 +1885,6 @@ footer {
   white-space: nowrap;
 }
 
-.hot-list a:visited {
-  color: #BC62C2;
-}
-
 /* Theme switch container */
 .theme-switch {
   border: 1px solid var(--border);
@@ -2093,8 +2090,8 @@ footer {
         buildHeadAndReset();
         bindMainNav();
         bindSubNav();
-        initRouter();
         initThemeCycle();
+        initRouter();
     }
 
     // Run as early as possible
