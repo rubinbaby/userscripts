@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         unified pages for my favourites
 // @namespace    https://rubinbaby.github.io/userscripts
-// @version      0.1.5
+// @version      0.1.6
 // @description  清空目标网页并显示自己常用的网页（首页/体育/新闻/天气/关于）
 // @author       yinxiao
 // @match        https://zq.titan007.com/info/index_cn.htm
@@ -28,7 +28,9 @@
 
     const STORAGE = {
         SCHEDULE_TAGS: 'sportsFilterTags',
+        SCHEDULE_DEFAULT_TAGS: ["曼联", "英超", "英格兰", "足总杯", "英格兰联赛杯", "欧洲杯", "中国", "中国男足", "中国女足", "上海申花", "中超", "足协杯", "亚洲杯", "世界杯", "f1"],
         SPORTS_NEWS_TAGS: 'sportsNewsFilterTags',
+        SPORTS_NEWS_DEFAULT_TAGS: ["曼联"],
         THEME: 'siteThemePreference', // 'light' | 'dark' | 'auto'
     };
 
@@ -382,10 +384,10 @@
     // -------------------------------
     // 通用 tag 存储与标签过滤 UI 工厂
     // -------------------------------
-    function createTagStore(storageKey) {
+    function createTagStore(storageKey, defaultStorageValues = []) {
         const set = new Set();
         function load() {
-            const arr = loadJSON(storageKey, []);
+            const arr = loadJSON(storageKey, defaultStorageValues);
             const list = Array.isArray(arr) ? arr.map(normalizeTag).filter(Boolean) : [];
             set.clear();
             list.forEach(t => set.add(t));
@@ -536,8 +538,8 @@
      *   storageKey, inputSelector, addBtnSelector, tagsContainerSelector,
      *   onChangeRender(tags) -> 渲染回调
      */
-    function setupFilterForSection({ storageKey, inputSelector, addBtnSelector, tagsContainerSelector, activeSet, onChangeRender }) {
-        const store = createTagStore(storageKey);
+    function setupFilterForSection({ storageKey, defaultStorageValues, inputSelector, addBtnSelector, tagsContainerSelector, activeSet, onChangeRender }) {
+        const store = createTagStore(storageKey, defaultStorageValues);
         mountTagFilterUI({
             tagStore: store,
             inputSelector,
@@ -746,6 +748,7 @@
     function setupScheduleFilter() {
         setupFilterForSection({
             storageKey: STORAGE.SCHEDULE_TAGS,
+            defaultStorageValues: STORAGE.SCHEDULE_DEFAULT_TAGS,
             inputSelector: '#schedule-filter-input',
             addBtnSelector: '#schedule-filter-add',
             tagsContainerSelector: '#schedule-filter-tags',
@@ -851,6 +854,7 @@
     function setupNewsFilter() {
         setupFilterForSection({
             storageKey: STORAGE.SPORTS_NEWS_TAGS,
+            defaultStorageValues: STORAGE.SPORTS_NEWS_DEFAULT_TAGS,
             inputSelector: '#news-filter-input',
             addBtnSelector: '#news-filter-add',
             tagsContainerSelector: '#news-filter-tags',
