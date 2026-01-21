@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         mini-page-preview
 // @namespace    https://rubinbaby.github.io/userscripts
-// @version      0.0.1
+// @version      0.0.2
 // @description  mini page preview
 // @author       yinxiao
 // @match        *://*/*
@@ -54,7 +54,7 @@
         allowPopupsHosts: null, // new Set(['play.sportsteam368.com']), 可按需增减
         // 站点白/黑名单
         hostWhitelist: null, // new Set(['example.com']) 时只启用在这些域
-        hostBlacklist: null  // new Set(['admin.example.com']) 时这些域禁用
+        hostBlacklist: new Set(['gitee.com', 'github.com'])  // new Set(['admin.example.com']) 时这些域禁用
     };
 
     function injectModalStyles() {
