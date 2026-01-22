@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         unified pages for my favourites
 // @namespace    https://rubinbaby.github.io/userscripts
-// @version      0.1.6
+// @version      0.1.7
 // @description  清空目标网页并显示自己常用的网页（首页/体育/新闻/天气/关于）
 // @author       yinxiao
 // @match        https://zq.titan007.com/info/index_cn.htm
@@ -1261,6 +1261,14 @@
   --hover: #182033;
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.5);
   --shadow-md: 0 2px 6px rgba(0, 0, 0, 0.6);
+}
+
+:root[data-theme="dark"] .preview-modal-backdrop {
+  background: rgba(0, 0, 0, 0.6);
+}
+
+:root[data-theme="dark"] .preview-modal-header {
+  background: linear-gradient(180deg, rgba(79, 140, 255, 0.06), transparent 60%);
 }
 
 /* Global */

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         mini-page-preview
 // @namespace    https://rubinbaby.github.io/userscripts
-// @version      0.0.2
+// @version      0.0.3
 // @description  mini page preview
 // @author       yinxiao
 // @match        *://*/*
@@ -51,10 +51,10 @@
         // 打开方式：使用 iframe（跨域安全，推荐）
         sandboxDefault: 'allow-scripts allow-same-origin allow-forms',
         sandboxPopups: 'allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox',
-        allowPopupsHosts: null, // new Set(['play.sportsteam368.com']), 可按需增减
+        allowPopupsHosts: null, // new Set(['example.com']), 可按需增减
         // 站点白/黑名单
         hostWhitelist: null, // new Set(['example.com']) 时只启用在这些域
-        hostBlacklist: new Set(['gitee.com', 'github.com'])  // new Set(['admin.example.com']) 时这些域禁用
+        hostBlacklist: new Set(['gitee.com', 'github.com'])  // new Set(['example.com']) 时这些域禁用
     };
 
     function injectModalStyles() {
@@ -80,10 +80,6 @@ a.visited-link {
   z-index: 9998;
   opacity: 1;
   transition: opacity 200ms ease;
-}
-
-:root[data-theme="dark"] .preview-modal-backdrop {
-  background: rgba(0, 0, 0, 0.6);
 }
 
 .preview-modal-backdrop.is-hidden {
@@ -174,6 +170,7 @@ a.visited-link {
   border-radius: var(--radius-sm);
   padding: 6px 10px;
   cursor: pointer;
+  box-shadow: var(--shadow-sm);
 }
 
 .preview-modal-copy:hover,
@@ -183,7 +180,7 @@ a.visited-link {
 }
 
 .preview-modal-body {
-  background: #fff;
+  background: var(--card);
 }
 
 .preview-modal-body iframe {
@@ -303,6 +300,22 @@ a.visited-link {
         document.addEventListener('keydown', (e) => { if (e.key === 'Escape') destroy(); }, { once: true });
         modal.addEventListener('click', (e) => e.stopPropagation());
 
+        // 可访问性：Tab 在模态内循环
+        modal.addEventListener('keydown', (e) => {
+            if (e.key !== 'Tab') return;
+            const focusables = modal.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+            const list = Array.from(focusables).filter(el => !el.hasAttribute('disabled'));
+            if (list.length === 0) return;
+            const idx = list.indexOf(document.activeElement);
+            if (e.shiftKey) {
+                const prev = idx <= 0 ? list[list.length - 1] : list[idx - 1];
+                prev.focus(); e.preventDefault();
+            } else {
+                const next = idx >= list.length - 1 ? list[0] : list[idx + 1];
+                next.focus(); e.preventDefault();
+            }
+        });
+
         // 缓存当前 URL，供“打开”按钮使用
         wrap.__modalSetTitle = (text) => { titleTextEl.textContent = String(text || '预览'); };
         wrap.__modalSetFavicon = (url) => {
@@ -310,14 +323,7 @@ a.visited-link {
                 const u = new URL(url, location.href);
                 icon.src = `${u.protocol}//${u.hostname}/favicon.ico`;
                 icon.style.display = '';
-
-                // 兜底：加载失败则隐藏图标或使用占位图
-                icon.onerror = () => {
-                    // 可选：使用占位图
-                    icon.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"><rect width="16" height="16" fill="%23ddd"/></svg>';
-                    // 或直接隐藏
-                    // icon.style.display = 'none';
-                };
+                icon.onerror = () => { icon.style.display = 'none'; };
             } catch {
                 icon.style.display = 'none';
             }
@@ -365,6 +371,9 @@ a.visited-link {
 
     function openModalWithURL(url, titleText) {
         try {
+            // HTTPS 页面上遇到 HTTP 链接，改新窗口打开，避免 Mixed Content
+            if (maybeOpenNewWindowForMixed(url)) return;
+
             const { wrap } = createModalStructure();
             wrap.__modalSetTitle(titleText || url);
             wrap.__modalSetURL(url);
@@ -381,6 +390,16 @@ a.visited-link {
             }
             iframe.sandbox = sandboxForURL(url);
             iframe.src = url;
+
+            // 在 openModalWithURL 内，监听加载失败
+            iframe.addEventListener('error', () => {
+                error('Failed to open modal preview with iframe');
+                try {
+                    const w = window.open(url, '_blank', 'noopener,noreferrer');
+                    if (w) { w.opener = null; }
+                } catch { }
+                wrap.__modalDestroy();
+            }, { once: true });
         } catch (e) {
             error('Failed to open modal preview:', e);
         }
@@ -507,8 +526,30 @@ a.visited-link {
         } catch { return MODAL_CFG.sandboxDefault; }
     }
 
+    // 混合内容兜底：HTTPS 页面上遇到 HTTP 链接，改为新窗口打开
+    function maybeOpenNewWindowForMixed(url) {
+        try {
+            const u = new URL(url, location.href);
+            const isPageHTTPS = location.protocol === 'https:';
+            if (isPageHTTPS && u.protocol === 'http:') {
+                const w = window.open(u.href, '_blank', 'noopener,noreferrer');
+                if (!w) return false;
+                try { w.opener = null; } catch { }
+                return true;
+            }
+            return false;
+        } catch { return false; }
+    }
+
     function bindModalPreviewForLinks() {
         injectModalStyles();
+
+        if (!currentHostAllowed()) {
+            // 只应用 visited 标记，不启用预览
+            startLinkObserver();
+            applyVisitedClasses(document);
+            return;
+        }
 
         // 委托绑定
         document.addEventListener('click', (e) => {
@@ -532,7 +573,8 @@ a.visited-link {
             markVisitedURL(href);
 
             // 生成标题（优先文本）
-            const titleText = (a.textContent || '').trim() || href;
+            const label = a.getAttribute('aria-label') || a.getAttribute('title') || '';
+            const titleText = String(label || a.textContent || '').trim() || href;
 
             openModalWithURL(href, titleText);
         });
@@ -542,32 +584,28 @@ a.visited-link {
             const wrap = document.querySelector('.preview-modal-wrap');
             if (wrap && typeof wrap.__modalDestroy === 'function') wrap.__modalDestroy();
         });
+
+        startLinkObserver();
+    }
+
+    function startLinkObserver() {
+        const { set } = loadVisited();
+        let idleTimer = null;
+        const mo = new MutationObserver((mutations) => {
+            const added = [];
+            mutations.forEach(m => {
+                m.addedNodes && m.addedNodes.length && added.push(...m.addedNodes);
+            });
+            debug('MutationObserver detected added nodes:', added);
+            applyVisitedForAddedNodes(added, set);
+            clearTimeout(idleTimer);
+            idleTimer = setTimeout(() => { try { mo.disconnect(); } catch { } }, 30000);
+        });
+        mo.observe(document.body, { childList: true, subtree: true });
     }
 
     // -------------------------------
     // Init
     // -------------------------------
     bindModalPreviewForLinks();
-
-    // 观察目标容器；如果是全页动态，传 document.body
-    const OBS_TARGET = document.body;
-
-    // 启动 MutationObserver（在你 bindModalPreviewForLinks() 之后调用一次即可）
-    function startLinkObserver() {
-        const { set } = loadVisited();
-        const mo = new MutationObserver((mutations) => {
-            const added = [];
-            mutations.forEach(m => {
-                m.addedNodes && m.addedNodes.forEach(n => added.push(n));
-            });
-            debug('MutationObserver detected added nodes:', added);
-            applyVisitedForAddedNodes(added, set);
-        });
-        mo.observe(OBS_TARGET, { childList: true, subtree: true });
-        // 暴露停止方法
-        window.__miniPreviewStopObserver = () => mo.disconnect();
-    }
-
-    // 初始化时开启
-    startLinkObserver();
 })();
